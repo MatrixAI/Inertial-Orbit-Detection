@@ -63,6 +63,7 @@ def normalise_signals(data_window, signal_delta_time_s):
 
     # to np arrays
     for k, vs in data_window.items():
+        if k.lower() == 'x' or k.lower() == 'y' or k.lower() == 'z':
         data_window[k] = acceleration_conversion_map(np.array(vs))
 
     # to ENU
