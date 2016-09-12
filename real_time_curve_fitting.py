@@ -64,7 +64,7 @@ def normalise_signals(data_window, signal_delta_time_s):
     # to np arrays
     for k, vs in data_window.items():
         if k.lower() == 'x' or k.lower() == 'y' or k.lower() == 'z':
-        data_window[k] = acceleration_conversion_map(np.array(vs))
+            data_window[k] = acceleration_conversion_map(np.array(vs))
 
     # to ENU
     east_axis_match = re.match(axis_regex, rotational_east_axis)
@@ -130,20 +130,23 @@ def process_curve_fit(data_window):
     
     # this function is to be executed asynchronously
     print("Child Process #%d" % os.getpid())
-
+    
     # normalise raw signals
     normalised_data_window = normalise_signals(data_window, delta_time_s)
     
     # inferred_freq is also the rotations per second
-    inferred_freq = freq_from_autocorr(normalised_data_window['east'], sampling_rate)
+    inferred_freq_east = freq_from_autocorr(normalised_data_window['east'], sampling_rate)
+    inferred_freq_up = freq_from_autocorr(normalised_data_window['up'], sampling_rate)
 
     # fix the sine function with the inferred frequency (scipy doesn't like partial functions)
-    sine_with_freq = lambda t, a, b, c: sine(inferred_freq, t, a, b, c)
+    sine_with_freq_east = lambda t, a, b, c: sine(inferred_freq_east, t, a, b, c)
+    sine_with_freq_up = lambda t, a, b, c: sine(inferred_freq_up, t, a, b, c)
 
     # fit the sine curve with a fixed frequency to the time values and the signal
-    popt, pcov = curve_fit(sine_with_freq, normalised_data_window['time'], normalised_data_window['east'])
+    popt_east, pcov_east = curve_fit(sine_with_freq_east, normalised_data_window['time'], normalised_data_window['east'])
+    popt_up, pcov_up = curve_fit(sine_with_freq_up, normalised_data_window['time'], normalised_data_window['up'])
 
-    return (popt, pcov, inferred_freq, normalised_data_window)
+    return (popt_east, popt_up, pcov_east, pcov_up, inferred_freq_east, inferred_freq_up, normalised_data_window)
 
 
 plt.ion()
@@ -151,42 +154,56 @@ axes = plt.gca()
 axes.set_xlabel('Time (s)')
 axes.set_ylabel('Accleration (m/s^2)')
 plt.ylim(-(ACCELERATION_MAX / 2), ACCELERATION_MAX / 2)
-plt_zero_line, = plt.plot([], [], 'c-')
+plot_zero_line, = plt.plot([], [], 'c-')
 plot_east_data, = plt.plot([], [], 'r.')
 plot_east_curve, = plt.plot([], [], 'r-')
 # plot_north_data, = plt.plot([], [], 'g.')
 # plot_north_curve, = plt.plot([], [], 'g-')
-# plot_up_data, = plt.plot([], [], 'b.')
-# plot_up_curve, = plt.plot([], [], 'b-')
+plot_up_data, = plt.plot([], [], 'b.')
+plot_up_curve, = plt.plot([], [], 'b-')
 
 def display(display_data):
-
+    
     # potential race condition here.. we need to lock access to the GUI, so the display updates are queued up or dropped
 
-    (popt, pcov, frequency, normalised_data_window) = display_data
+    (popt_east, popt_up, pcov_east, pcov_up, frequency_east, frequency_up, normalised_data_window) = display_data
 
     plt.xlim(normalised_data_window['time'][0], normalised_data_window['time'][-1])
 
-    plt_zero_line.set_xdata(normalised_data_window['time'])
-    plt_zero_line.set_ydata(normalised_data_window['time'] * 0)
+    plot_zero_line.set_xdata(normalised_data_window['time'])
+    plot_zero_line.set_ydata(normalised_data_window['time'] * 0)
 
     plot_east_data.set_xdata(normalised_data_window['time'])
     plot_east_data.set_ydata(normalised_data_window['east'])
 
+    plot_up_data.set_xdata(normalised_data_window['time'])
+    plot_up_data.set_ydata(normalised_data_window['up'])
+
     plot_east_curve.set_xdata(normalised_data_window['time'])
     plot_east_curve.set_ydata( 
         sine(
-            frequency, 
+            frequency_east, 
             normalised_data_window['time'], 
-            popt[0], 
-            popt[1], 
-            popt[2]
+            popt_east[0], 
+            popt_east[1], 
+            popt_east[2]
+        )
+    )
+
+    plot_up_curve.set_xdata(normalised_data_window['time'])
+    plot_up_curve.set_ydata( 
+        sine(
+            frequency_up, 
+            normalised_data_window['time'], 
+            popt_up[0], 
+            popt_up[1], 
+            popt_up[2]
         )
     )
 
     plt.draw()
 
-    print("RPS: " + str(frequency))
+    print("RPS East: " + str(frequency_east) + "\n" + "RPS Up: " + str(frequency_up))
 
 sensor = serial.Serial(device_path, baud_rate)
 sensor.reset_input_buffer()
