@@ -463,11 +463,11 @@ def display(display_data):
     plt.draw()
 
     if rotational_direction == 1:
-        print "Clockwise"
+        print("Clockwise")
     elif rotational_direction == -1:
-        print "Anticlockwise"
+        print("Anticlockwise")
     else:
-        print "Unknown Direction"
+        print("Unknown Direction")
 
     print("RPS East: " + str(frequency_east) + "\n" + "RPS Up: " + str(frequency_up))
 
