@@ -13,6 +13,7 @@ from functools import partial
 from matplotlib.mlab import find as find_index_by_true
 from scipy.optimize import curve_fit
 from scipy.signal import fftconvolve
+from scipy.stats import mode
 from multiprocessing import Pool 
 
 # these are acquired from http://www.freetronics.com.au/pages/am3x-quickstart-guide
@@ -58,6 +59,196 @@ sampling_rate = 1000 / delta_time_ms
 
 message_regex = re.compile('^Time.(\d+).X.(\d+).Y.(\d+).Z.(\d+)', re.I)
 axis_regex = re.compile('([+-])([xyz])', re.I)
+
+# This is mapping from the sign of the acceleration vector deltas to rotational tangent direction.
+# The keys are in the form of (East Axis Delta Sign, Up Axis Delta Sign).
+#
+# +,+ => NE
+# +,- => SE
+# -,- => SW
+# -,+ => NW
+# 0,+ => N
+# 0,- => S
+# +,0 => E
+# -,0 => W
+# 0,0 => ?
+acceleration_vector_delta_direction_mapping = {
+    (1 ,  1): 'NE',
+    (1 , -1): 'SE',
+    (-1, -1): 'SW',
+    (-1,  1): 'NW',
+    (0 ,  1): 'N',
+    (0 , -1): 'S',
+    (1 ,  0): 'E',
+    (-1,  0): 'W',
+    (0 ,  0): '?'
+}
+
+# This is mapping from the sign of the acceleration vector to rotational position.
+# The keys are in the form of (East Axis Sign, Up Axis Sign).
+# 
+# +,+ => Left Bottom Quadrant
+# +,- => Left Top Quadrant
+# -,- => Right Top Quadrant
+# -,+ => Right Bottom Quadrant
+# 0,+ => Bottom Semicircle
+# 0,- => Top Semicircle
+# +,0 => Left Semicircle
+# -,0 => Right Semicircle
+# 0,0 => ?
+acceleration_vector_position_mapping = {
+    (1 ,  1): 'LB',
+    (1 , -1): 'LT',
+    (-1, -1): 'RT',
+    (-1,  1): 'RB',
+    (0 ,  1): 'B',
+    (0 , -1): 'T',
+    (1 ,  0): 'L',
+    (-1,  0): 'R',
+    (0 ,  0): '?'
+}
+
+# This is a mapping from:
+#   1. acceleration vector delta direction
+#   2. acceleration vector position 
+# to clockwise or anti-clockwise.
+# 1 represents clockwise.
+# -1 represents anticlockwise.
+# 
+# NE - LT => clockwise
+# NE - RB => anticlockwise
+# NE - L  => clockwise
+# NE - B  => anticlockwise
+# NE - *  => ?
+#  
+# SE - LB => anticlockwise
+# SE - RT => clockwise
+# SE - L  => anticlockwise
+# SE - T  => clockwise
+# SE - *  => ?
+# 
+# SW - LT => anticlockwise
+# SW - RB => clockwise
+# SW - R  => clockwise
+# SW - T  => anticlockwise
+# SW - *  => ?
+# 
+# NW - RT => anticlockwise
+# NW - LB => clockwise
+# NW - R  => anticlockwise
+# NW - B  => clockwise
+# NW - *  => ?
+# 
+# (all of these below is rare or impossible because it requires T1 and T2 to be at the same position)
+# 
+# N - L => clockwise
+# N - R => anticlockwise
+# N - * => ?
+# 
+# S - L => anticlockwise
+# S - R => clockwise
+# S - * => ?
+# 
+# E - T => clockwise
+# E - B => anticlockwise
+# E - * => ?
+# 
+# W - T => anticlockwise
+# W - B => clockwise
+# W - * => ?
+acceleration_vector_direction_and_position_mapping = {
+    ('NE', 'LT'):  1,
+    ('NE', 'RB'): -1,
+    ('NE', 'L' ):  1,
+    ('NE', 'B' ): -1,
+    ('SE', 'LB'): -1,
+    ('SE', 'RT'):  1,
+    ('SE', 'L' ): -1,
+    ('SE', 'T' ):  1,
+    ('SW', 'LT'): -1,
+    ('SW', 'RB'):  1,
+    ('SW', 'R' ):  1,
+    ('SW', 'T' ): -1,
+    ('NW', 'RT'): -1,
+    ('NW', 'LB'):  1,
+    ('NW', 'R' ): -1,
+    ('NW', 'B' ):  1,
+    ('N' , 'L' ):  1,
+    ('N' , 'R' ): -1,
+    ('S' , 'L' ): -1,
+    ('S' , 'R' ):  1,
+    ('E' , 'T' ):  1,
+    ('E' , 'B' ): -1,
+    ('W' , 'T' ): -1,
+    ('W' , 'B' ):  1
+}
+
+# Here is our assumptions:
+# There are 4 quadrants to a circular motion
+# The 4 quadrants can be grouped into 4 semicircles.
+# the bottom semicircle
+# the top semicircle
+# the left semicircle
+# the right semicircle
+# projecting a circular motion onto the horizontal axis
+# we see that the change between left to right semicircle 
+# will register a change in acceleration direction on the horizontal axis
+# projecting a circular motion onto the vertical axis
+# we see that the change between bottom to top semicircle 
+# will register a change in acceleration direction on the vertical axis
+# for the horizontal axis:
+# 
+#              RtL
+#              -|-  
+#             / | \ 
+#  ----->>   |  |  |   <<------
+#             \ | / 
+#              -|-  
+#              LtR
+#  
+#  * ->
+#    * --> 
+#      * --->
+#        * ---->
+#          * --->
+#            * -->
+#              * ->
+#             <- *
+#          <-- *
+#       <--- *
+#    <---- *
+#   <--- *
+#  <-- *
+# <- *
+#  * ->
+#    * --> 
+#      * --->
+#        * ---->
+#          * --->
+#            * -->
+#              * ->
+#              
+# Where the arrows `->>` represent acceleration direction.
+# And the `->` represents velocity direction, while arrow length represents magnitude.
+# 
+# on the vertical axis, a similar graph will appear
+# 
+# we will see that: 
+# left semicircle = right acceleration, right semicircle = left acceleration
+# top semicircle = bottom acceleration, bottom semicircle = top acceleration
+# 
+# the displacement, velocity and acceleration will all be a sine wave when graphed onto a time axis
+# 
+# so we can now know whether a motion is clockwise or anticlockwise
+# but we still need 1 more piece of knowledge
+# that is the change in acceleration vector
+# 
+# we can find the change acceleration vector for any given time interval
+# by looking at the X & Z acceleration values for T1 and comparing with X & Z acceleration values at T2
+# for now we do not care about Y acceleration values, because we only care about a 2D circular motion and not a 3D orbit
+# also because a user can reverse their direction of rotation in between a data window
+# we should be doing a majority vote between all time interval calculations in order to tell us
+# what the majority rotation direction is for the given data window
 
 def normalise_signals(data_window, signal_delta_time_s):
 
@@ -123,6 +314,7 @@ def freq_from_autocorr(signal, sampling_rate):
     px, py = parabolic(corr, peak)
     return sampling_rate / px
 
+# this returns a np.array
 def sine (freq, time, amp, phase, vertical_disp):    
     return amp * np.sin(freq * 2 * np.pi * time + phase) + vertical_disp
 
@@ -146,7 +338,67 @@ def process_curve_fit(data_window):
     popt_east, pcov_east = curve_fit(sine_with_freq_east, normalised_data_window['time'], normalised_data_window['east'])
     popt_up, pcov_up = curve_fit(sine_with_freq_up, normalised_data_window['time'], normalised_data_window['up'])
 
-    return (popt_east, popt_up, pcov_east, pcov_up, inferred_freq_east, inferred_freq_up, normalised_data_window)
+
+    # to find the rotational direction: clockwise or anticlockwise
+    # we need to use the fitted functions to get the approximated acceleration vector values
+    fitted_east_sine = lambda ts: sine(inferred_freq_east, ts, popt_east[0], popt_east[1], popt_east[2])    
+    fitted_north_sine = lambda ts: sine(inferred_freq_up, ts, popt_up[0], popt_up[1], popt_up[2])
+    
+    # zip up the east and up accelerations into vectors for every time instant from the fitted sine function
+    # creates an array of [[East Accel, Up Accel], [East Accel, Up Accel], ...]
+    # uses numpy transposition of 2D array
+    acceleration_vectors = np.array(
+        [
+            fitted_east_sine(normalised_data_window['time']), 
+            fitted_north_sine(normalised_data_window['time'])
+        ]
+    ).T
+
+    # acquire the change in acceleration vector for each time interval
+    # relies on element-wise subtraction of left shifted and right shifted acceleration_vectors
+    acceleration_vector_deltas = np.subtract(acceleration_vectors[1:], acceleration_vectors[:-1])
+
+    # map the acceleration_vector_deltas to directions
+    acceleration_vector_delta_directions = np.vectorize(
+        lambda k: acceleration_vector_delta_direction_mapping[tuple(k)]
+    )(
+        np.sign(acceleration_vector_deltas)
+    )
+
+    # map the acceleration_vectors to positions
+    acceleration_vector_positions = np.vectorize(
+        lambda k: acceleration_vector_position_mapping[tuple(k)]
+    )(
+        np.sign(acceleration_vectors)
+    )
+
+    # zip up the directions with the positions
+    # for example: [ ['NE', 'LB'], [ 'SW', 'RT'], ... ]
+    acceleration_direction_and_positions = np.array(
+        [
+            acceleration_vector_delta_directions,
+            acceleration_vector_positions
+        ]
+    ).T
+
+    # [ 'C', 'C', 'C', '?', 'AC', 'AC', 'C'] => Clockwise via Majority Vote
+    rotational_directions = np.vectorize(
+        lambda k: acceleration_vector_direction_and_position_mapping.get(tuple(k), 0)
+    )(
+        acceleration_direction_and_positions
+    )
+
+    # most common direction
+    rotational_direction = mode(rotational_directions)[0][0]
+
+    return (
+        (popt_east, pcov_east), 
+        (popt_up, pcov_up), 
+        inferred_freq_east, 
+        inferred_freq_up, 
+        rotational_direction, 
+        normalised_data_window
+    )
 
 
 plt.ion()
@@ -166,7 +418,14 @@ def display(display_data):
     
     # potential race condition here.. we need to lock access to the GUI, so the display updates are queued up or dropped
 
-    (popt_east, popt_up, pcov_east, pcov_up, frequency_east, frequency_up, normalised_data_window) = display_data
+    (
+        (popt_east, pcov_east), 
+        (popt_up, pcov_up), 
+        inferred_freq_east, 
+        inferred_freq_up, 
+        rotational_direction, 
+        normalised_data_window
+    ) = display_data
 
     plt.xlim(normalised_data_window['time'][0], normalised_data_window['time'][-1])
 
@@ -182,7 +441,7 @@ def display(display_data):
     plot_east_curve.set_xdata(normalised_data_window['time'])
     plot_east_curve.set_ydata( 
         sine(
-            frequency_east, 
+            inferred_freq_east, 
             normalised_data_window['time'], 
             popt_east[0], 
             popt_east[1], 
@@ -193,7 +452,7 @@ def display(display_data):
     plot_up_curve.set_xdata(normalised_data_window['time'])
     plot_up_curve.set_ydata( 
         sine(
-            frequency_up, 
+            inferred_freq_up, 
             normalised_data_window['time'], 
             popt_up[0], 
             popt_up[1], 
@@ -203,7 +462,15 @@ def display(display_data):
 
     plt.draw()
 
+    if rotational_direction == 1:
+        print "Clockwise"
+    elif rotational_direction == -1:
+        print "Anticlockwise"
+    else:
+        print "Unknown Direction"
+
     print("RPS East: " + str(frequency_east) + "\n" + "RPS Up: " + str(frequency_up))
+
 
 sensor = serial.Serial(device_path, baud_rate)
 sensor.reset_input_buffer()
