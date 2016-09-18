@@ -114,73 +114,74 @@ acceleration_vector_position_mapping = {
 # to clockwise or anti-clockwise.
 # 1 represents clockwise.
 # -1 represents anticlockwise.
+# The opposite of the acceleration vector delta direction is the tangential rotational direction.
 # 
-# NE - LT => clockwise
-# NE - RB => anticlockwise
-# NE - L  => clockwise
-# NE - B  => anticlockwise
+# NE - LT => anticlockwise
+# NE - RB => clockwise
+# NE - L  => anticlockwise
+# NE - B  => clockwise
 # NE - *  => ?
 #  
-# SE - LB => anticlockwise
-# SE - RT => clockwise
-# SE - L  => anticlockwise
-# SE - T  => clockwise
+# SE - LB => clockwise
+# SE - RT => anticlockwise
+# SE - L  => clockwise
+# SE - T  => anticlockwise
 # SE - *  => ?
 # 
-# SW - LT => anticlockwise
-# SW - RB => clockwise
-# SW - R  => clockwise
-# SW - T  => anticlockwise
+# SW - LT => clockwise
+# SW - RB => anticlockwise
+# SW - R  => anticlockwise
+# SW - T  => clockwise
 # SW - *  => ?
 # 
-# NW - RT => anticlockwise
-# NW - LB => clockwise
-# NW - R  => anticlockwise
-# NW - B  => clockwise
+# NW - RT => clockwise
+# NW - LB => anticlockwise
+# NW - R  => clockwise
+# NW - B  => anticlockwise
 # NW - *  => ?
 # 
 # (all of these below is rare or impossible because it requires T1 and T2 to be at the same position)
 # 
-# N - L => clockwise
-# N - R => anticlockwise
+# N - L => anticlockwise
+# N - R => clockwise
 # N - * => ?
 # 
-# S - L => anticlockwise
-# S - R => clockwise
+# S - L => clockwise
+# S - R => anticlockwise
 # S - * => ?
 # 
-# E - T => clockwise
-# E - B => anticlockwise
+# E - T => anticlockwise
+# E - B => clockwise
 # E - * => ?
 # 
-# W - T => anticlockwise
-# W - B => clockwise
+# W - T => clockwise
+# W - B => anticlockwise
 # W - * => ?
 acceleration_vector_direction_and_position_mapping = {
-    ('NE', 'LT'):  1,
-    ('NE', 'RB'): -1,
-    ('NE', 'L' ):  1,
-    ('NE', 'B' ): -1,
-    ('SE', 'LB'): -1,
-    ('SE', 'RT'):  1,
-    ('SE', 'L' ): -1,
-    ('SE', 'T' ):  1,
-    ('SW', 'LT'): -1,
-    ('SW', 'RB'):  1,
-    ('SW', 'R' ):  1,
-    ('SW', 'T' ): -1,
-    ('NW', 'RT'): -1,
-    ('NW', 'LB'):  1,
-    ('NW', 'R' ): -1,
-    ('NW', 'B' ):  1,
-    ('N' , 'L' ):  1,
-    ('N' , 'R' ): -1,
-    ('S' , 'L' ): -1,
-    ('S' , 'R' ):  1,
-    ('E' , 'T' ):  1,
-    ('E' , 'B' ): -1,
-    ('W' , 'T' ): -1,
-    ('W' , 'B' ):  1
+    ('NE', 'LT'): -1,
+    ('NE', 'RB'):  1,
+    ('NE', 'L' ): -1,
+    ('NE', 'B' ):  1,
+    ('SE', 'LB'):  1,
+    ('SE', 'RT'): -1,
+    ('SE', 'L' ):  1,
+    ('SE', 'T' ): -1,
+    ('SW', 'LT'):  1,
+    ('SW', 'RB'): -1,
+    ('SW', 'R' ): -1,
+    ('SW', 'T' ):  1,
+    ('NW', 'RT'):  1,
+    ('NW', 'LB'): -1,
+    ('NW', 'R' ):  1,
+    ('NW', 'B' ): -1,
+    ('N' , 'L' ): -1,
+    ('N' , 'R' ):  1,
+    ('S' , 'L' ):  1,
+    ('S' , 'R' ): -1,
+    ('E' , 'T' ): -1,
+    ('E' , 'B' ):  1,
+    ('W' , 'T' ):  1,
+    ('W' , 'B' ): -1
 }
 
 # Here is our assumptions:
@@ -346,49 +347,31 @@ def process_curve_fit(data_window):
     
     # zip up the east and up accelerations into vectors for every time instant from the fitted sine function
     # creates an array of [[East Accel, Up Accel], [East Accel, Up Accel], ...]
-    # uses numpy transposition of 2D array
-    acceleration_vectors = np.array(
-        [
-            fitted_east_sine(normalised_data_window['time']), 
-            fitted_north_sine(normalised_data_window['time'])
-        ]
-    ).T
+    acceleration_vectors = list(zip(fitted_east_sine(normalised_data_window['time']), fitted_north_sine(normalised_data_window['time'])))
 
     # acquire the change in acceleration vector for each time interval
     # relies on element-wise subtraction of left shifted and right shifted acceleration_vectors
     acceleration_vector_deltas = np.subtract(acceleration_vectors[1:], acceleration_vectors[:-1])
 
     # map the acceleration_vector_deltas to directions
-    acceleration_vector_delta_directions = np.vectorize(
-        lambda k: acceleration_vector_delta_direction_mapping[tuple(k)]
-    )(
-        np.sign(acceleration_vector_deltas)
-    )
+    acceleration_vector_delta_directions = []
+    for signs in np.sign(acceleration_vector_deltas):
+        acceleration_vector_delta_directions.append(acceleration_vector_delta_direction_mapping[tuple(signs)])
 
     # map the acceleration_vectors to positions
-    acceleration_vector_positions = np.vectorize(
-        lambda k: acceleration_vector_position_mapping[tuple(k)]
-    )(
-        np.sign(acceleration_vectors)
-    )
+    acceleration_vector_positions = []
+    for signs in np.sign(acceleration_vectors):
+        acceleration_vector_positions.append(acceleration_vector_position_mapping[tuple(signs)])
 
     # zip up the directions with the positions
     # for example: [ ['NE', 'LB'], [ 'SW', 'RT'], ... ]
-    acceleration_direction_and_positions = np.array(
-        [
-            acceleration_vector_delta_directions,
-            acceleration_vector_positions
-        ]
-    ).T
+    # then produce a list of inferred rotational directions
+    # for example: [ 1, 1, 1, 0, -1, -1, 1] where 1: C, -1: AC and 0: ?
+    rotational_directions = []
+    for dir_and_pos in zip(acceleration_vector_delta_directions, acceleration_vector_positions):
+        rotational_directions.append(acceleration_vector_direction_and_position_mapping.get(dir_and_pos, 0))
 
-    # [ 'C', 'C', 'C', '?', 'AC', 'AC', 'C'] => Clockwise via Majority Vote
-    rotational_directions = np.vectorize(
-        lambda k: acceleration_vector_direction_and_position_mapping.get(tuple(k), 0)
-    )(
-        acceleration_direction_and_positions
-    )
-
-    # most common direction
+    # most common direction (vote on the majority inferred rotational direction)
     rotational_direction = mode(rotational_directions)[0][0]
 
     return (
@@ -469,7 +452,7 @@ def display(display_data):
     else:
         print("Unknown Direction")
 
-    print("RPS East: " + str(frequency_east) + "\n" + "RPS Up: " + str(frequency_up))
+    print("RPS East: " + str(inferred_freq_east) + "\n" + "RPS Up: " + str(inferred_freq_up))
 
 
 sensor = serial.Serial(device_path, baud_rate)
