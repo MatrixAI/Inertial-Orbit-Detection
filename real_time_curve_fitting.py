@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 
 import os
+import re
 import csv 
 import sys
 import serial
-import re
-import time
+import threading
+import socketserver
+import signal as unix_signals
 import numpy as np
 import matplotlib.pyplot as plt 
 from copy import deepcopy
-from functools import partial
 from matplotlib.mlab import find as find_index_by_true
 from scipy.optimize import curve_fit
 from scipy.signal import fftconvolve
@@ -53,12 +54,17 @@ rotational_north_axis = sys.argv[4] # this needs to be '+y'
 rotational_up_axis = sys.argv[5] # this needs to be '+z'
 time_window_ms = int(sys.argv[6])
 delta_time_ms = int(sys.argv[7])
+host = sys.argv[8]
+port = int(sys.argv[9])
 
 delta_time_s = delta_time_ms / 1000
 sampling_rate = 1000 / delta_time_ms
 
 message_regex = re.compile('^Time.(\d+).X.(\d+).Y.(\d+).Z.(\d+)', re.I)
 axis_regex = re.compile('([+-])([xyz])', re.I)
+
+output_direction = 0
+output_rps = 0.0
 
 # This is mapping from the sign of the acceleration vector deltas to rotational tangent direction.
 # The keys are in the form of (East Axis Delta Sign, Up Axis Delta Sign).
@@ -320,6 +326,9 @@ def sine (freq, time, amp, phase, vertical_disp):
     return amp * np.sin(freq * 2 * np.pi * time + phase) + vertical_disp
 
 def process_curve_fit(data_window):
+
+    # ignore SIGINT in the child process to allow the parent process to cleanup
+    unix_signals.signal(unix_signals.SIGINT, unix_signals.SIG_IGN)
     
     # this function is to be executed asynchronously
     print("Child Process #%d" % os.getpid())
@@ -445,30 +454,65 @@ def display(display_data):
 
     plt.draw()
 
+    global output_direction
+    global output_rps
+
     if rotational_direction == 1:
         print("Clockwise")
+        output_direction = 1
     elif rotational_direction == -1:
         print("Anticlockwise")
+        output_direction = -1
     else:
         print("Unknown Direction")
+        output_direction = 0
+
+    # output rps will be the average of the east frequency and up frequency
+    output_rps = (inferred_freq_east + inferred_freq_up) / 2
 
     print("RPS East: " + str(inferred_freq_east) + "\n" + "RPS Up: " + str(inferred_freq_up))
 
+def cleanup_and_exit(pool, sensor, server, code):
+    
+    print("Closing Orbit Detection Process Pool, Orbit Sensor and TCP Server!")
+    pool.close()
+    sensor.write_timeout = 0
+    sensor.write(b'0')
+    sensor.close()
+    server.shutdown()
+    server.server_close()
+    sys.exit(code)
 
+# TCP server will be in its own thread
+class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+    pass
+
+# TCP request handling will be in its own thread
+class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
+    def handle(self):
+        self.request.sendall(bytes("{0}:{1}\n".format(output_direction, output_rps), 'ascii'))
+
+# starting 1 child process
+pool = Pool(processes=1)
+
+# start the TCP server
+server = ThreadedTCPServer((host, port), ThreadedTCPRequestHandler)
+server_thread = threading.Thread(target=server.serve_forever)
+server_thread.daemon = True
+server_thread.start()
+print("Starting server at {0}:{1}".format(host, port))
+
+# start the sensor readings
 sensor = serial.Serial(device_path, baud_rate)
 sensor.reset_input_buffer()
 sensor.reset_output_buffer()
-
 print("Waiting for device to be ready...")
 sensor.timeout = None    
 if sensor.readline() != b"Ready!\n":
     print("Device was not ready! Exiting!")
-    exit(1)
+    cleanup_and_exit(pool, sensor, server, 1)
 sensor.timeout = 1
 print("Device is ready!")
-
-# starting 1 child process
-pool = Pool(processes=1)
 
 print("Starting Analysis!")
 sensor.write(b'1')
@@ -480,54 +524,61 @@ data_window = {
     'y': [],
     'z': []
 }
-while(True):
 
-    # if the starting_byte is not S, discard it until we reach an S
-    starting_byte = sensor.read(1)
+try:
 
-    if starting_byte != b"S":
-        continue
+    while(True):
 
-    # read a byte until we reach an E
-    intermediate_byte = sensor.read(1)
-    message_buffer = b"" 
-    while (intermediate_byte != b"E"):
-        message_buffer += intermediate_byte
+        # if the starting_byte is not S, discard it until we reach an S
+        starting_byte = sensor.read(1)
+
+        if starting_byte != b"S":
+            continue
+
+        # read a byte until we reach an E
         intermediate_byte = sensor.read(1)
+        message_buffer = b"" 
+        while (intermediate_byte != b"E"):
+            message_buffer += intermediate_byte
+            intermediate_byte = sensor.read(1)
 
-    # now we have the message buffer
-    # start from Time 'T'
-    message_buffer = message_buffer.decode("utf-8")
+        # now we have the message buffer
+        # start from Time 'T'
+        message_buffer = message_buffer.decode("utf-8")
 
-    coordinates = re.match(message_regex, message_buffer)
+        coordinates = re.match(message_regex, message_buffer)
 
-    if coordinates is None:
-        continue
+        if coordinates is None:
+            continue
 
-    reading_time_ms = int(coordinates.group(1))
-    reading_x_accel = int(coordinates.group(2)) 
-    reading_y_accel = int(coordinates.group(3))
-    reading_z_accel = int(coordinates.group(4))
+        reading_time_ms = int(coordinates.group(1))
+        reading_x_accel = int(coordinates.group(2)) 
+        reading_y_accel = int(coordinates.group(3))
+        reading_z_accel = int(coordinates.group(4))
 
-    if (data_window_start_ms is not None and (data_window_start_ms + time_window_ms >= reading_time_ms)):
+        if (data_window_start_ms is not None and (data_window_start_ms + time_window_ms >= reading_time_ms)):
 
-        data_window['t'].append(reading_time_ms)
-        data_window['x'].append(reading_x_accel)
-        data_window['y'].append(reading_y_accel)
-        data_window['z'].append(reading_z_accel)
+            data_window['t'].append(reading_time_ms)
+            data_window['x'].append(reading_x_accel)
+            data_window['y'].append(reading_y_accel)
+            data_window['z'].append(reading_z_accel)
 
-    else:
+        else:
 
-        # if we have started a data window
-        # then this means this is the end of a data window
-        # we must asynchronously process the data window
-        if (data_window_start_ms is not None):
-            print("Processing Data Window at Time: %d" % data_window_start_ms)
-            pool.apply_async(process_curve_fit, args=(deepcopy(data_window),), callback=display)
-        
-        # start a new window
-        data_window_start_ms = reading_time_ms
-        data_window['t'] = [reading_time_ms]
-        data_window['x'] = [reading_x_accel]
-        data_window['y'] = [reading_y_accel]
-        data_window['z'] = [reading_z_accel]
+            # if we have started a data window
+            # then this means this is the end of a data window
+            # we must asynchronously process the data window
+            if (data_window_start_ms is not None):
+                print("Processing Data Window at Time: %d" % data_window_start_ms)
+                pool.apply_async(process_curve_fit, args=(deepcopy(data_window),), callback=display)
+            
+            # start a new window
+            data_window_start_ms = reading_time_ms
+            data_window['t'] = [reading_time_ms]
+            data_window['x'] = [reading_x_accel]
+            data_window['y'] = [reading_y_accel]
+            data_window['z'] = [reading_z_accel]
+
+except KeyboardInterrupt:
+
+    cleanup_and_exit(pool, sensor, server, 0)
