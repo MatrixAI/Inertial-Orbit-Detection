@@ -37,29 +37,24 @@ void switch_running () {
  * This is the real setup.
  * First it blocks until the serial is ready.
  * Then it writes the ready message.
- * Then it blocks until we get a true running.
- * If we don't get a true running, then block until there's available input.
- * Then parse the available input for a running control signal.
  */
 void running_setup () {
 
     // block until serial port is ready
     while (!Serial);
 
-    // let the server know the device is ready
+    // let the host know the device is ready
     write_ready_message();
 
-    // block until running is true
-    while (!running) {
-        // block until we get some input
-        while (!Serial.available());
-        switch_running();
-    }
+    // the only thing we can block on is the serial port readiness
+    // we cannot block on receiving a running control signal
+    // that can lead to the race condition of where the device doesn't reset 
+    // the communication protocol if the host terminates the port
 
 }
 
 /**
- * The ready message is sent to the server every time the serial port is opened.
+ * The ready message is sent to the host every time the serial port is opened.
  */
 void write_ready_message () {
 
@@ -105,7 +100,7 @@ void write_accelerometer_values () {
 }
 
 /**
- * Setup will let the server know its ready, and it will block until running is true.
+ * Setup will set the baud rate and let the host know its ready
  */
 void setup () {
 
@@ -115,13 +110,16 @@ void setup () {
 }
 
 /**
+ * This is an event loop.
+ * The event loop pattern needs to call all designated event handlers.
+ * The serial port is where all events are emitted.
+ * The event loop must not be blocked. Or else there can be a race condition between the host and device.
  * Loop will write the message frames, while delaying by 30ms.
- * On each iteration, it will check if the server is telling the device to stop running.
  */
 void loop () {
 
-    // if serial port gets closed, this device may not be reset, 
-    // if so, we perform the setup again
+    // if serial port gets closed, this device must be reset
+    // so that way the communication protocol starts from the beginning
     if (!Serial) {
         running = false;
         running_setup();
