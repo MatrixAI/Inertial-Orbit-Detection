@@ -68,6 +68,7 @@ void setup() {
     // Connect to the server's IP address and port
     // server IP is 127.0.0.1 and port is 8888
     client = new Client(this, "127.0.0.1", 8888); 
+    client.clear();
 } 
 
 // DRAW BLOCK
@@ -83,6 +84,12 @@ void draw() {
         drawGameOverScreen();
     } 
 } 
+
+// EXIT HANDLER
+
+void stop () {
+    client.stop();
+}
 
 // SCREEN CONTENTS
 
@@ -192,12 +199,15 @@ void liftBalloon() {
 void readFromOrbitDetectionServer() {
 
     if (!client.active()) {
-        println("Connection to server dropped, restarting connection.")
+        println("Connection to server dropped, restarting connection.");
         client = new Client(this, "127.0.0.1", 8888);
     }
 
     // ask for data first
-    client.write('Give Me Data!\n');
+    client.write("Give Me Data!\n");
+
+    // block on client (should this be done?)
+    while(client.available() <= 0);
 
     // acquire the data
     byte newline = 10;
@@ -205,6 +215,9 @@ void readFromOrbitDetectionServer() {
     
     // split values into an array
     String[] splittedDirectionAndRPS = split(directionAndRPS, ':'); 
+
+    println("Orbit Direction: ", splittedDirectionAndRPS[0]);
+    println("Orbit RPS: ", splittedDirectionAndRPS[1]);
     
     orbitDirection = int(splittedDirectionAndRPS[0]);
     orbitRPS = float(splittedDirectionAndRPS[1]);
