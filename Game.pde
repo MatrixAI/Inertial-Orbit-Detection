@@ -2,7 +2,7 @@
 
 // client network
 import processing.net.*;
-Client c; 
+Client client;
 int orbitDirection;
 float orbitRPS;
 float orbitRPSScalingFactor = 0.6;
@@ -67,7 +67,7 @@ void setup() {
     balloonY = height - balloonSize/2 - basketSize;
     // Connect to the server's IP address and port
     // server IP is 127.0.0.1 and port is 8888
-    c = new Client(this, "127.0.0.1", 8888); 
+    client = new Client(this, "127.0.0.1", 8888); 
 } 
 
 // DRAW BLOCK
@@ -189,16 +189,26 @@ void liftBalloon() {
     balloonY -= lift;
 }
 
-void readFromOrbitDetectionServer() { 
-  byte newline = 10;
-  if (c.available() > 0) { 
-    String directionAndRPS = c.readStringUntil(newline);
+void readFromOrbitDetectionServer() {
+
+    if (!client.active()) {
+        println("Connection to server dropped, restarting connection.")
+        client = new Client(this, "127.0.0.1", 8888);
+    }
+
+    // ask for data first
+    client.write('Give Me Data!\n');
+
+    // acquire the data
+    byte newline = 10;
+    String directionAndRPS = client.readStringUntil(newline);
+    
     // split values into an array
     String[] splittedDirectionAndRPS = split(directionAndRPS, ':'); 
+    
     orbitDirection = int(splittedDirectionAndRPS[0]);
     orbitRPS = float(splittedDirectionAndRPS[1]);
-    c = new Client(this, "127.0.0.1", 8888);
-  }
+
 }
 
 void applyHorizontalSpeed() { 
