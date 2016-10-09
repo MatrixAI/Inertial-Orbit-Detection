@@ -40,6 +40,21 @@ color wallColors = color(240, 248, 255);
 // [gapWallX, gapWallY, gapWallWidth, gapWallHeight]
 ArrayList<int[]> walls = new ArrayList<int[]>(); 
 
+// cloud
+int cloudSpeed = 2; 
+int cloudInterval = 1600;
+float lastCloudAddTime = 0;
+int minCloudHeight = 100;
+int maxCloudHeight = 250;
+int cloudWidth = 80;
+int cloudHeight = 40;
+color primarycloudColors = color(255, 255, 255);
+color secondarycloudColors = color(202, 225, 255);
+// This arraylist stores data of the gaps between the walls
+// Actual walls are drawn accordingly
+// [gapCloudX, gapCloudY]
+ArrayList<int[]> clouds = new ArrayList<int[]>(); 
+
 // score
 int score = 0;
 
@@ -48,8 +63,8 @@ int score = 0;
 void setup() { 
     // This sets up the game screen
     size(500, 500); 
-    balloonX = width/4;
-    balloonY = height/5;
+    balloonX = width/2;
+    balloonY = height - balloonSize/2 - basketSize;
     // Connect to the server's IP address and port
     // server IP is 127.0.0.1 and port is 8888
     c = new Client(this, "127.0.0.1", 8888); 
@@ -84,8 +99,11 @@ void drawGameScreen() {
     drawballoon();
     applyGravity();
     applyHorizontalSpeed(); 
-    wallAdder(); 
-    wallHandler(); 
+    keepInScreen();
+    cloudAdder(); 
+    cloudHandler();
+    // wallAdder(); 
+    // wallHandler(); 
 }  
 
 void drawGameOverScreen() { 
@@ -122,9 +140,10 @@ void applyGravity() {
 }
 
 void drawBackground() {
-  background(187, 255, 255);
-  fill(255);
+  background(198, 226, 255);
+  fill(0, 139, 69);
   noStroke();
+  ellipseMode(CENTER);
   ellipse(width/2, height-150, width+150, 100);
   fill(162, 205, 90);
   noStroke();
@@ -185,6 +204,60 @@ void readFromOrbitDetectionServer() {
 void applyHorizontalSpeed() { 
     balloonX += balloonHoriVelocity;
     balloonHoriVelocity -= (balloonHoriVelocity * airfriction);
+}
+
+void keepInScreen() {
+  // balloon hits floor
+  if (balloonY + (balloonSize/2) + basketSize > height) { 
+    balloonY = height - balloonSize/2 - basketSize;
+  }
+}
+
+void cloudAdder() { 
+    if (millis() - lastCloudAddTime > cloudInterval) { 
+        int randHeight = round(random(minCloudHeight, maxCloudHeight)); 
+        int randY = round(random(0, height - randHeight));
+        // {gapCloudX, gapCloudY}
+        int[] randCloud = {width, randY};
+        clouds.add(randCloud); 
+        lastCloudAddTime = millis();
+    }
+}
+
+void cloudHandler() { 
+    for (int i = 0; i < clouds.size(); i++) { 
+        cloudRemover(i); 
+        cloudMover(i);
+        cloudDrawer(i); 
+    }
+}
+
+void cloudDrawer(int index) { 
+    int[] cloud = clouds.get(index); 
+    // get gap cloud settings
+    int gapCloudX = cloud[0];
+    int gapCloudY = cloud[1]; 
+    // draw actual clouds
+    ellipseMode(CORNER);
+    noStroke();
+    fill(primarycloudColors);
+    ellipse(gapCloudX, gapCloudY, cloudWidth/2, cloudWidth/2);
+    ellipse(gapCloudX-12, gapCloudY+8, cloudWidth/3, cloudWidth/3);
+    ellipse(gapCloudX+12, gapCloudY-21, cloudHeight*1.5, cloudHeight*1.5);
+    ellipse(gapCloudX+48, gapCloudY, cloudWidth/2, cloudWidth/2);
+    ellipse(gapCloudX+75, gapCloudY+8, cloudWidth/3, cloudWidth/3);
+}
+
+void cloudMover(int index) {
+    int[] cloud = clouds.get(index); 
+    cloud[0] -= cloudSpeed; 
+}
+
+void cloudRemover(int index) { 
+    int[] cloud = clouds.get(index); 
+    if (cloud[0] + cloudWidth <= 0) { 
+        clouds.remove(index);
+    }
 }
 
 void wallAdder() { 
