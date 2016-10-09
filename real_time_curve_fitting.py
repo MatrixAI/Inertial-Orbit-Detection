@@ -497,7 +497,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 # wait on client to ask for data first (it can be anything)
                 if not (self.request.recv(1024)): break
                 # send `output_direction:output_rps`
-                self.request.sendall(bytes("{0}:{1}\n".format(output_direction, output_rps), 'ascii'))
+                self.request.sendall(bytes("^{0}:{1}\n".format(output_direction, output_rps), 'ascii'))
             print("Client: {} closed connection.".format(self.request.getpeername()))
         except:
             print("Timed out waiting for client, closing connection to client: {}".format(self.request.getpeername()))
