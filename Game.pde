@@ -198,6 +198,16 @@ void liftBalloon() {
 
 void readFromOrbitDetectionServer() {
 
+    // we cannot block on the client sending us data
+    // this io routine must be asynchronous
+    // but we would need to some sort of callback handling for this
+    // and we would have convert TCP into message oriented
+
+    char starting_byte;
+    char intermediate_byte;
+    StringBuilder message_buffer = new StringBuilder();
+    String[] directionAndRps;
+
     if (!client.active()) {
         println("Connection to server dropped, restarting connection.");
         client = new Client(this, "127.0.0.1", 8888);
@@ -205,22 +215,36 @@ void readFromOrbitDetectionServer() {
 
     // ask for data first
     client.write("Give Me Data!\n");
-
-    // block on client (should this be done?)
-    while(client.available() <= 0);
-
-    // acquire the data
-    byte newline = 10;
-    String directionAndRPS = client.readStringUntil(newline);
     
-    // split values into an array
-    String[] splittedDirectionAndRPS = split(directionAndRPS, ':'); 
+    if (client.available() > 0) {
 
-    println("Orbit Direction: ", splittedDirectionAndRPS[0]);
-    println("Orbit RPS: ", splittedDirectionAndRPS[1]);
+        starting_byte = client.readChar();
+        while (starting_byte != '^') { // change to compare to byte version
+            starting_byte = client.readChar();
+        }
+
+        intermediate_byte = client.readChar();
+        while (intermediate_byte != '\n') { // change to compare to byte version
+            message_buffer.append(intermediate_byte); // how to append to byte array?
+            intermediate_byte = client.readChar();
+        }
+
+        String message_buffer_string = message_buffer.toString();
+
+        directionAndRps = match(message_buffer_string, "(-?[0-1]):((?:[0-9]*[.])?[0-9]+)");
+
+        if (directionAndRps != null) {
+
+            println("Acquired new Direction and RPS!");
+            orbitDirection = int(directionAndRps[0]);
+            orbitRPS = float(directionAndRps[1]);
+
+        }
+
+    }
     
-    orbitDirection = int(splittedDirectionAndRPS[0]);
-    orbitRPS = float(splittedDirectionAndRPS[1]);
+    println("Orbit Direction: ", orbitDirection);
+    println("Orbit RPS: ", orbitRPS);
 
 }
 
