@@ -490,7 +490,17 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 # TCP request handling will be in its own thread
 class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
     def handle(self):
-        self.request.sendall(bytes("{0}:{1}\n".format(output_direction, output_rps), 'ascii'))
+        print("Responding to new client: {}".format(self.request.getpeername()))
+        self.request.settimeout(5)
+        try:
+            while True:
+                # wait on client to ask for data first (it can be anything)
+                if not (self.request.recv(1024)): break
+                # send `output_direction:output_rps`
+                self.request.sendall(bytes("{0}:{1}\n".format(output_direction, output_rps), 'ascii'))
+            print("Client: {} closed connection.".format(self.request.getpeername()))
+        except:
+            print("Timed out waiting for client, closing connection to client: {}".format(self.request.getpeername()))
 
 # starting 1 child process
 pool = Pool(processes=1)
