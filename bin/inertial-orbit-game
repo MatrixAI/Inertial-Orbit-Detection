@@ -1,0 +1,6 @@
+#!/usr/bin/env python3
+
+# this will launch both the game client and orbit server
+# this will pass the command line parameters to both
+# look into service discovery (to fix IP and Port and Device Serial Path)
+# and automatic baud rate detection to get the baud rate correct

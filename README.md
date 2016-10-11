@@ -96,3 +96,30 @@ Consider the resultant change in acceleration (delta) between T1 and T2.
 The opposite direction of the resultant change in acceleration is the actual rotational tangent direction.
 
 The combination of the rotational tangent direction and the displacement position at the circle is what tells us whether we are rotating clockwise or anticlockwise.
+
+---
+
+* https://docs.python.org/3/howto/sockets.html - How sockets work, and how to receive RST close or timeout.
+* https://en.wikipedia.org/wiki/Asynchronous_I/O#Polling - That we are mostly using polling (and not blocking poll, that is select)
+* http://tldp.org/HOWTO/TCP-Keepalive-HOWTO/overview.html & https://en.wikipedia.org/wiki/Keepalive - The client needs to send keep alive packets instead of requesting messages, due to a push protocol.
+* https://docs.python.org/3/library/_thread.html#module-_thread & http://www.dabeaz.com/python/UnderstandingGIL.pdf - that Python threasd are actually pthreads limited by the GIL, which means context switches occur with `timer.sleep(0)`, IO operations, and a timer interrupt specified by the Python runtime.
+* For the event loop to work with have to deal with the possibility of partial reads and partial writes. In most cases, we should only care about partial reads, we'll make sure the write goes through before continuing (so we will have blocking writes). This is because writes are meant to be real time, so bad writes can just be dropped. But partial reads means we have to maintain a buffer, and the buffer pair algorithm is needed to in case we have read overflow, that is read more than enough for 1 message (this is to improve performance rather than to read 1 byte a time).
+    - http://compilerdesigndetails.blogspot.com.au/2012/02/buffering.html
+    - http://ecomputernotes.com/compiler-design/input-buffering
+    - http://www.slideshare.net/dattatraygandhmal/input-buffering
+    - http://stackoverflow.com/questions/1480236/does-a-tcp-socket-connection-have-a-keep-alive - however accoridng to this the TCP keepalive is an OS-dependent parameter, which means an application level PING PONG keep alive protocol is required instead...
+    - http://serverfault.com/questions/343750/tcp-connection-keep-alive-direction - both the client and server can initiate TCP keepalive
+    - http://stackoverflow.com/a/23240725/582917 - Also this says it as well
+    - https://delog.wordpress.com/2013/08/16/handling-tcp-keepalive/ - however this shows that Linux and specifically Python on Linux exposes the TCP keepalive as socket-specific configuration, but I know that Java doesn't, and it doesn't work on Windows or Mac. So again, although Linux allows changing the TCP keepalive parameters for a given socket this isn't available across the board, which makes TCP keep alive of limited utility!
+* Figure out how to do service discovery for the serial port service (controller device to the server). Also how do drivers get installed on Linux? How do they detect a relevant serial device? Is it via udev script? What about mac or windows?
+* Relationship between rolling window increment and rolling window size actually gives rise to both latency and accuracy and efficiency tradeoff.
+
+
+Assume our local reference frame for the device is ENU oriented.
+This is marked on the device with X and Y and Z arrows.
+
+East  is X
+North is Y
+Up    is Z
+
+We only care about East and Up for our rotational game.
