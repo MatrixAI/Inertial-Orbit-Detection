@@ -1,9 +1,11 @@
+import os
 import accelerometers
 import numpy as np
 from matplotlib.mlab import find as find_index_by_true
 from scipy.optimize import curve_fit
 from scipy.signal import fftconvolve
 from scipy.stats import mode
+import matplotlib.pyplot as plt 
 
 def normalise_signals(data_window, signal_delta_time_s):
 

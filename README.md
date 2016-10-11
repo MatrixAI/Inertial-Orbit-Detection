@@ -123,3 +123,26 @@ North is Y
 Up    is Z
 
 We only care about East and Up for our rotational game.
+
+We will send data from the display callback which is executed on the main 
+
+Investigate thresholding.
+
+Without a broadcast/fanout queue, this currently only allows 1 analysis to 1 server, cannot work with multiple game clients.
+
+Used this for the TCP Server: http://stackoverflow.com/questions/25245223/python-queue-queue-wont-work-in-threaded-tcp-stream-handler
+
+> The difference between the two is what the application does between polls.
+> 
+> If a program polls a device say every second, and does something else in the mean time if no data is available (including possibly just sleeping, leaving the CPU available for others), it's polling.
+>  If the program continuously polls the device (or resource or whatever) without doing anything in between checks, it's called a busy-wait.
+>  
+>  This isn't directly related to synchronization. A program that blocks on a condition variable (that should signal when a device or resource is available) is neither polling nor busy-waiting. That's more like event-driven/interrupt-driven I/O.
+>   (But for example a thread that loops around a try_lock is a form of polling, and possibly busy-waiting if the loop is tight.)
+> http://stackoverflow.com/a/10594529/582917
+
+For inter-thread communication, we can use queue channels, locks as a condition variable combined with global variables (locks are required for both signalling the event, and maintaining atomicity of the global variable), or if its just 1 piece of data, then a single global variable.
+
+We decided to opt for a single queue channel.
+
+Yet we also still need a double input buffer algorithm in the analysis loop. Because it's polling only 1 event, that is the reading from the game controller, we can just have a blocking event loop.

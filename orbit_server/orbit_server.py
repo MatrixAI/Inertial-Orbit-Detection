@@ -1,29 +1,13 @@
-# import os
-# import re
-# import csv 
-# import sys
-# import serial
-# import threading
-# import socketserver
-# import signal as unix_signals
-# import numpy as np
-# import matplotlib.pyplot as plt 
-# from copy import deepcopy
-# from matplotlib.mlab import find as find_index_by_true
-# from scipy.optimize import curve_fit
-# from scipy.signal import fftconvolve
-# from scipy.stats import mode
-# from multiprocessing import Pool 
-
-
-# to get accelerometer information
-
-import argparse
 import re
+import sys
+import argparse
 import accelerometers
-import analysis_loop
 import signal as unix_signals
-from multiprocessing import Pool
+import server_loop
+import analysis_loop
+import multiprocessing
+import queue
+import logging
 
 axis_regex = re.compile('([+-])([xyz])', re.I)
 
@@ -40,7 +24,7 @@ def cleanup_and_exit(pool, device, server, code):
         server.server_close()
     sys.exit(code)
 
-if __name__ == "__main__": 
+def main:
 
     command_line_parser = argparse.ArgumentParser()
     command_line_parser.add_argument("device", type=str, help="Path to Orbit Controller Serial Device")
@@ -100,9 +84,20 @@ if __name__ == "__main__":
         help="Sampling Period in Milliseconds",
         default=30
     )
+    command_line_parser.add_argument(
+        "-v",
+        "--verbose",
+        help="Log Verbose Messages",
+        action="store_const",
+        dest="loglevel"
+        const=logging.INFO
+    )
     command_line_args = command_line_parser.parse_args()
 
     # process the command line parameters
+
+    # set the log level
+    logging.basicConfig(level=command_line_args.loglevel)
 
     # acquire the acceleration parameters for the controller acceleration sensor
     accel_params = accelerometers.accel_sensors[command_line_args.sensor_type]
@@ -126,52 +121,35 @@ if __name__ == "__main__":
     process_pool = None
     controller = None
     server = None
+    analysis_server_chan = queue.Queue()
 
-    # prevent the process_window child-process from inheriting the exit handler
+    # prevent the process_window child-process from inheriting the common exit signals
     exit_handler = lambda signum, frame: cleanup_and_exit(process_pool, controller, server, 0)
     unix_signal.signal(unix_signal.SIGINT, unix_signal.SIG_IGN)
     unix_signal.signal(unix_signal.SIGTERM, unix_signal.SIG_IGN)
     unix_signal.signal(unix_signal.SIGQUIT, unix_signal.SIG_IGN)
     unix_signal.signal(unix_signal.SIGHUP, unix_signal.SIG_IGN)
-    process_pool = Pool(processes=1)
+    process_pool = multiprocessing.Pool(processes=1)
     unix_signal.signal(unix_signal.SIGINT, exit_handler)
     unix_signal.signal(unix_signal.SIGTERM, exit_handler)
     unix_signal.signal(unix_signal.SIGQUIT, exit_handler)
     unix_signal.signal(unix_signal.SIGHUP, exit_handler)
 
-    # start the TCP server
-    server = ThreadedTCPServer((command_line_args.host, command_line_args.port), ThreadedTCPRequestHandler)
-    
-    server_thread = threading.Thread(target=server.serve_forever)
-    server_thread.daemon = True
-    server_thread.start()
-    print("Starting server at {0}:{1}".format(host, port))
+    try: 
 
-    # start the sensor readings
-    sensor = serial.Serial(device_path, baud_rate)
-    sensor.reset_input_buffer()
-    sensor.reset_output_buffer()
-    print("Waiting for device to be ready...")
-    sensor.timeout = None    
-    if sensor.readline() != b"Ready!\n":
-        print("Device was not ready! Exiting!")
-        cleanup_and_exit(pool, sensor, server, 1)
-    sensor.timeout = 1
-    print("Device is ready!")
+        logging.info("Establishing TCP server at {0}:{1}", command_line_args.host, command_line_args.port)
+        server = server_loop.start(command_line_args.host, command_line_args.port, analysis_server_chan)
 
-    print("Starting Analysis!")
-    sensor.write(b'1')
+        logging.info("Establishing connection to controller: {}", command_line_args.device)
+        controller = analysis_loop.connect(command_line_args.device, command_line_args.baud)
+        
+        # starts the main loop (pass in the process_pool)
+        analysis_loop.run(controller, process_pool, analysis_server_chan)
 
+    finally: 
 
+        cleanup_and_exit(process_pool, controller, server, 0)
 
+if __name__ == "__main__": 
 
-
-
-
-
-
-
-
-
-
-
+    main()

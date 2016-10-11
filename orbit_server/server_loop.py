@@ -1,13 +1,31 @@
-# this will be the server loop running in multithreaded
 import socketserver
+import threading
+import logging
+import timer
 
-class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+class RotationTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     """TCP server will be in its own thread, and handle TCP connection requests."""
-    pass
+    
+    def __init__(
+        self, 
+        server_address, 
+        RequestHandlerClass, 
+        channel
+        bind_and_activate=True,
+    ):
+        self.channel = channel
+        super().__init__(server_address, RequestHandlerClass, bind_and_activate=bind_and_activate)
+        # try the super method instead first
+        # MRO shouuld eventually find __init__ with socketserver.TCPServer
+        # socketserver.TCPServer.__init__(
+        #     self, 
+        #     server_address, 
+        #     RequestHandlerClass, 
+        #     bind_and_activate=bind_and_activate
+        # )
 
-# TCP request handling will be in its own thread
-class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
-    """On establishing a connection, this handler will handle the connection.
+class RotationTCPHandler(socketserver.BaseRequestHandler):
+    """On establishing a connection, this handler will handle the connection in a separate thread.
 
     It will push messages to the game client, and the pushing operation is synchronised 
     to the processing of a data window by the analysis loop. This is done via a queue 
@@ -23,8 +41,13 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
     The client may also receive PINGs from the server, and will need to respond to it.
     """
 
+    def __init__(self, request, client_address, server):
+        self.channel = server.channel
+        super().__init__(request, client_address, server) # try if this works
+        # socketserver.BaseRequestHandler.__init__(self, request, client_address, server)
+
     def handle(self):
-        print("Responding to new client: {}".format(self.request.getpeername()))
+        logging.info("Responding to new client: {}", self.request.getpeername())
         self.request.settimeout(5)
         try:
             while True:
@@ -32,6 +55,21 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 if not (self.request.recv(1024)): break
                 # send `output_direction:output_rps`
                 self.request.sendall(bytes("^{0}:{1}\n".format(output_direction, output_rps), 'ascii'))
-            print("Client: {} closed connection.".format(self.request.getpeername()))
+
+                # use self.channel to synchronise the pushing of messages
+                # but how to check on both events
+                # from the client, and events from the analysis loop?
+
+                # yield to other threads
+                timer.sleep(0)
+            logging.info("Client: {} closed connection.", self.request.getpeername())
         except:
-            print("Timed out waiting for client, closing connection to client: {}".format(self.request.getpeername()))
+            logging.info("Timed out waiting for client, closing connection to client: {}", self.request.getpeername())
+
+def start(host, port, channel):
+    logging.info("Running Server Loop")
+    server = RotationTCPServer((host, port), RotationTCPHandler, channel)
+    server_thread = threading.Thread(target=server.serve_forever)
+    server_thread.daemon = True
+    server_thread.start()
+    return server
