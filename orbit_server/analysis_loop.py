@@ -38,7 +38,6 @@ def read_from_controller(controller, frame_start_byte, frame_end_byte):
 
     return (sample_time_ms, sample_x_accel, sample_y_accel, sample_z_accel)
 
-
 def roll_the_window(rolling_window, rolling_window_interval, rolling_time, shift_or_increment=True):
     """Rolls the data window. Make sure the new window is the same type as the existing window.
 
@@ -114,10 +113,11 @@ def run(
     time_window_ms, 
     time_interval_ms, 
     time_delta_ms, 
-    process_pool, 
-    orientation, 
     sensor_type, 
-    channel
+    orientation, 
+    process_pool, 
+    channel, 
+    graph 
 ):
 
     logging.info("Running Analysis Loop")
@@ -215,7 +215,7 @@ def run(
                 process_pool.apply_async(
                     window_processing.create_analyse_rotation_process(time_delta_ms, orientation, sensor_type), 
                     args=(deepcopy(rolling_window),), 
-                    callback=window_processing.create_analyse_rotation_process_callback(channel)
+                    callback=window_processing.create_analyse_rotation_process_callback(channel, graph)
                 )
 
             # start a new rolling_window_interval

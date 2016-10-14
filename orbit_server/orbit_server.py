@@ -7,6 +7,7 @@ import server_loop
 import analysis_loop
 import multiprocessing
 import queue
+import graphing
 import logging
 
 axis_regex = re.compile('([+-])([xyz])', re.I)
@@ -85,6 +86,12 @@ def main:
         default=30
     )
     command_line_parser.add_argument(
+        "-g",
+        "--graph",
+        help="Plot Acceleration Graph",
+        action="store_true"
+    )
+    command_line_parser.add_argument(
         "-v",
         "--verbose",
         help="Log Verbose Messages",
@@ -124,6 +131,15 @@ def main:
     server = None
     analysis_server_chan = queue.Queue()
 
+    # if we need to graph, we'll setup the graph
+    if command_line_args.graph:
+        graph = graphing.setup(
+            -(accelerometers.accel_sensors[command_line_args.sensor_type]["accel_max"] / 2)
+            accelerometers.accel_sensors[command_line_args.sensor_type]["accel_max"] / 2
+        )
+    else:
+        graph = None
+
     # prevent the process_window child-process from inheriting the common exit signals
     exit_handler = lambda signum, frame: cleanup_and_exit(process_pool, controller, server, 0)
     unix_signal.signal(unix_signal.SIGINT, unix_signal.SIG_IGN)
@@ -143,17 +159,18 @@ def main:
 
         logging.info("Establishing connection to controller: {}", command_line_args.device)
         controller = analysis_loop.connect(command_line_args.device, command_line_args.baud)
-        
+
         # starts the main loop (pass in the process_pool)
         analysis_loop.run(
-            controller, 
-            command_line_args.time_window, 
-            command_line_args.time_interval, 
-            command_line_args.time_delta, 
-            process_pool, 
-            orientation, 
-            command_line_args.sensor_type, 
-            analysis_server_chan
+            controller=controller, 
+            time_window_ms=command_line_args.time_window, 
+            time_interval_ms=command_line_args.time_interval, 
+            time_delta_ms=command_line_args.time_delta, 
+            sensor_type=command_line_args.sensor_type, 
+            orientation=orientation, 
+            process_pool=process_pool, 
+            channel=analysis_server_chan, 
+            graph=graph
         )
 
     finally: 

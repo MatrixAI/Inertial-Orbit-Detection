@@ -1,3 +1,4 @@
+from sine import sine
 from scipy.optimize import curve_fit
 from scipy.signal import fftconvolve
 from scipy.stats import mode
@@ -6,8 +7,8 @@ from matplotlib.mlab import find as find_index_by_true
 import os
 import accelerometers
 import rotation_mapping
+import graphing
 import numpy as np
-import matplotlib.pyplot as plt 
 import logging
 
 def create_analyse_rotation_process(time_delta_ms, orientation, sensor_type):
@@ -33,48 +34,42 @@ def create_analyse_rotation_process(time_delta_ms, orientation, sensor_type):
 
     return analyse_rotation_process
 
-def create_analyse_rotation_process_callback(channel):
+def create_analyse_rotation_process_callback(channel, graph):
 
-    def analyse_rotation_process_callback():
-        pass
+    def analyse_rotation_process_callback(package):
+
+        (norm_data_window, frequencies, wave_properties, rotation_direction) = package
+
+        # send data to the server_loop!
+        # use the channel luke!
+
+        if graph:
+            graphing.display(graph, norm_data_window, frequencies, wave_properties)
 
     return analyse_rotation_process_callback
 
 def normalise_signals(data_window, time_delta_s, orientation, sensor_type):
 
-    # to np arrays
-    for k, vs in data_window.items():
-        if k.lower() == 'x' or k.lower() == 'y' or k.lower() == 'z':
-            data_window[k] = accelerometers.accel_sensors[sensor_type]["accel_convert_map_np"](np.array(vs))
-
     # we will convert the milliseconds into just seconds
+    # for the purposes of orbit, we only care about 2D orbit, so we drop the north axis
     norm_data_window = {
         "time":  None
         "east":  None,
-        "north": None,
         "up":    None
     }
 
-    # subtracting the mean will set 0 to the center of the rotational orbit
-    # it's just a translation of the entire curve downwards
-    norm_data_window["east"] = 
-        data_window[orientation["east"]["axis"]] -  np.mean(data_window[orientation["east"]["axis"]])
-    norm_data_window["north"] = 
-        data_window[orientation["north"]["axis"]] - np.mean(data_window[orientation["north"]["axis"]])
-    norm_data_window["up"] = 
-        data_window[orientation["up"]["axis"]] -    np.mean(data_window[orientation["up"]["axis"]])
-
-    # flip values according to the given signs
-    if orientation["east"]["sign"]  == '-': norm_data_window['east']  *= -1
-    if orientation["north"]["sign"] == '-': norm_data_window['north'] *= -1
-    if orientation["up"]["sign"]    == '-': norm_data_window['up']    *= -1
+    # convert to np arrays and convert acceleration units to acceleration m/s^2
+    for k, vs in data_window.items():
+        if k == 't':
+            data_window[k] = np.array(vs)
+        else:
+            data_window[k] = accelerometers.accel_sensors[sensor_type]["accel_convert_map_np"](np.array(vs))            
 
     # we now have a set of acceleration samples, but they are irregularly time-spaced because 
     # the game controller may be a soft realtime system
     # in order to normalise into regularly time-spaced samples, we need to use interpolation
     # on the acceleration data, and acquire the new interpolated samples from a corrected time set
 
-    # we will be using seconds from now
     time_values_s = data_window["t"] / 1000
 
     # the endpoint is false in order to recreate a half-open interval
@@ -88,18 +83,29 @@ def normalise_signals(data_window, time_delta_s, orientation, sensor_type):
         endpoint = False
     )
 
-    # use linear interpolation and allow a bit of extrapolation 
-    # since the corrected time could be a bit larger than the sampled time
-    for axis in ["east", "north", "up"]:
+    norm_data_window['time']  = corrected_time_values_s
+
+    for axis in ["east", "up"]:
+
+        # the east and up axis depends on fixed orientation of the controller during orbit
+        norm_data_window[axis] = data_window[orientation[axis]["axis"]]
+        
+        # subtracting the mean will translate the curve to be centered at their rotational orbit
+        norm_data_window[axis] -= np.mean(norm_data_window[axis])
+
+        # flip values according to the given signs
+        if orientation[axis]["sign"] == '-': norm_data_window[axis] *= -1
+        
+        # use linear interpolation and allow a bit of extrapolation 
+        # this is because the corrected time could be a bit larger than the sampled time
         interpolated_f = interp1d(
             norm_data_window[axis], 
             time_values_s, 
             bounds_error=False,
             fill_value="extrapolate"
         )
-        norm_data_window[axis]  = interpolated_f(corrected_time_values_s)
 
-    norm_data_window['time']  = corrected_time_values_s
+        norm_data_window[axis]  = interpolated_f(corrected_time_values_s)
 
     return norm_data_window
 
@@ -107,12 +113,10 @@ def estimate_frequency(norm_data_window, sampling_rate):
 
     # the inferred frequency is also the rotations per second
     inferred_freq_east  = freq_from_autocorr(norm_data_window['east'],  sampling_rate)
-    inferred_freq_north = freq_from_autocorr(norm_data_window['north'], sampling_rate)
     inferred_freq_up    = freq_from_autocorr(norm_data_window['up'],    sampling_rate)
 
     return {
         "east": inferred_freq_east,
-        "north": inferred_freq_north,
         "up": inferred_freq_up
     }
 
@@ -136,7 +140,6 @@ def fit_sine_waves(norm_data_window, frequencies)
 
     # fix the sine function with the inferred frequency (scipy doesn't like partial functions)
     sine_with_freq_east  = lambda t, a, b, c: sine(frequencies["east"],  t, a, b, c)
-    sine_with_freq_north = lambda t, a, b, c: sine(frequencies["north"], t, a, b, c)
     sine_with_freq_up    = lambda t, a, b, c: sine(frequencies["up"],    t, a, b, c)
 
     # fit the sine curve with a fixed frequency to the time values and the signal
@@ -144,11 +147,6 @@ def fit_sine_waves(norm_data_window, frequencies)
         sine_with_freq_east, 
         norm_data_window['time'], 
         norm_data_window['east']
-    )
-    popt_north, pcov_north = curve_fit(
-        sine_with_freq_north, 
-        norm_data_window['time'], 
-        norm_data_window['north']
     )
     popt_up, pcov_up = curve_fit(
         sine_with_freq_up, 
@@ -160,10 +158,6 @@ def fit_sine_waves(norm_data_window, frequencies)
         "east": {
             "popt": popt_east,
             "pcov": pcov_east
-        },
-        "north": {
-            "popt": popt_north,
-            "pcov": pcov_north 
         },
         "up": {
             "popt": popt_up,
