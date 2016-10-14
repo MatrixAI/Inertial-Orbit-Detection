@@ -71,10 +71,10 @@ def main:
         default=3000
     )
     command_line_parser.add_argument(
-        "-tr", 
-        "--time-rolling", 
+        "-ti", 
+        "--time-interval", 
         type=int, 
-        help="Rolling Time Window Increment in Milliseconds",
+        help="Rolling Time Window Interval in Milliseconds",
         default=150
     )
     command_line_parser.add_argument(
@@ -99,23 +99,24 @@ def main:
     # set the log level
     logging.basicConfig(level=command_line_args.loglevel)
 
-    # acquire the acceleration parameters for the controller acceleration sensor
-    accel_params = accelerometers.accel_sensors[command_line_args.sensor_type]
-
     # acquire the axes that will be used for ENU orientation
     east_axis_match = re.match(axis_regex, command_line_args.east_axis)
     north_axis_match = re.match(axis_regex, command_line_args.north_axis)
     up_axis_match = re.match(axis_regex, command_line_args.up_axis)
-    east_sign = east_axis_match.group(1)
-    east_axis = east_axis_match.group(2)
-    north_sign = north_axis_match.group(1)
-    north_axis = north_axis_match.group(2)
-    up_sign = up_axis_match.group(1)
-    up_axis = up_axis_match.group(2)
-
-    # these will be used for sampling interpolation, frequency estimation, and sine wave regression
-    delta_time_s = command_line_args.time_delta / 1000
-    sampling_rate = 1000 / command_line_args.time_delta
+    orientation = {
+        "east": {
+            "sign": east_axis_match.group(1),
+            "axis": east_axis_match.group(2).lower()
+        },
+        "north": {
+            "sign": north_axis_match.group(1), 
+            "axis": north_axis_match.group(2).lower()
+        },
+        "up": {
+            "sign": up_axis_match.group(1), 
+            "axis": up_axis_match.group(2).lower()
+        }
+    }
 
     # initialise the external resources for this server
     process_pool = None
@@ -144,7 +145,16 @@ def main:
         controller = analysis_loop.connect(command_line_args.device, command_line_args.baud)
         
         # starts the main loop (pass in the process_pool)
-        analysis_loop.run(controller, process_pool, analysis_server_chan)
+        analysis_loop.run(
+            controller, 
+            command_line_args.time_window, 
+            command_line_args.time_interval, 
+            command_line_args.time_delta, 
+            process_pool, 
+            orientation, 
+            command_line_args.sensor_type, 
+            analysis_server_chan
+        )
 
     finally: 
 

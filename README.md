@@ -146,3 +146,41 @@ For inter-thread communication, we can use queue channels, locks as a condition 
 We decided to opt for a single queue channel.
 
 Yet we also still need a double input buffer algorithm in the analysis loop. Because it's polling only 1 event, that is the reading from the game controller, we can just have a blocking event loop.
+
+Periodic Window vs Rolling Window vs Recursive Window.
+
+Fanout dispatch can be made to take 1 queue, and then establish a queue for each subscriber. It will then fan out all message from the input queue to all other queues. Each queue is intended to be FIFO.
+
+If the time window is 3000ms, this means the period is 3s. Then the minimum rotation frequency that can be performed that would allow 1 wavelength to be entirely captured in the time window is equal to 1 divided by the period. Therefore 1/3 = 0.333* Hz (a.k.a. RPS). Multiply this by 60 gives you the RPM (1/3 * 60 = 20 RPM).
+
+However this is just theoretical. It's possible the frequency estimation algorithm can do a good job even without a full wavelength in its data window. It's also possible that even with a full wavelength, the frequency estimation cannot do its job. Specifically a zero crossing rate algorithm needs to have a full wavelength.
+
+Currently our autocorrelation algorithm appears to fail when the RPM goes below 48 RPM, and this is even when there is more than a full wavelength available.
+
+---
+
+Possible Online Reset of Arduino (including Leonardos):
+
+```
+def reset(controller):
+    old_baud_rate = controller.baudrate
+    if controller.is_open:
+        controller.close()
+    # set to serial 9600 and open and close
+    controller.baudrate = 9600
+    controller.open()
+    controller.close()
+    # set to serial 1200 and open and close (and set DTR)
+    controller.baudrate = 1200
+    controller.open()
+    controller.setDTR(False)
+    controller.close()
+    timer.sleep(1)
+    # reopen with old baud rate
+    controller.baudrate = old_baud_rate
+    controller.open()
+```
+
+---
+
+In the future, the server should be resilient to device plugins and unplugs. Detect both of these and continue running. When unplugging, it should signal game to reset (or close the game), and then restart from the beginning. It should also deal with when the device stops answering, and attempt to reset the game controller until it works, or after a few retries, indicate that the device is broken, and signal the game to exit, and close itself. The server itself should be starting the game, so the game should be a child process of the parent process.

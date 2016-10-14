@@ -1,11 +1,14 @@
 import numpy as np
 
 def create_accel_convert(accel_unit_max, volt_max, volt_base, volt_per_g, g_units):
+
     def accel_convert(accel_units):
+
         """Converts acceleration units from the controller devices to acceleration meters per second squared."""
         accel_volts = accel_units / (accel_unit_max / volt_max)
         accel = ((accel_volts - volt_base) / volt_per_g) * g_units
         return accel
+
     return accel_convert
 
 accel_sensors = {
@@ -28,6 +31,7 @@ accel_sensors = {
 }
 
 for device in accel_sensors:
+
     accel_sensors[device]["accel_convert"] = create_accel_convert(
         accel_sensors[device]["accel_unit_max"], 
         accel_sensors[device]["volt_max"],
