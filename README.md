@@ -191,3 +191,13 @@ Although we would want to use: http://stackoverflow.com/a/2162188/582917
 We cannot use select on queues currently. And the current one only works on multiprocessing queues. And even though select.select works on unix computers, it currently does not work on Windows. So that is problematic. So we just to use an event loop.
 
 > Portability alert: On Unix, select works both with the sockets and files. Don’t try this on Windows. On Windows, select works with sockets only. Also note that in C, many of the more advanced socket options are done differently on Windows. In fact, on Windows I usually use threads (which work very, very well) with my sockets.
+
+The `b""` just creates an immutable bytes object. It is not useful. We should be using bytearray for building up buffers. The `b"" + b"d"`, just ends up copying the old object.
+
+---
+
+Other: http://arduino.stackexchange.com/a/4222/27186
+
+Also note the DOS issue in TCP and arduino.
+
+* https://github.com/igormiktor/arduino-EventManager
