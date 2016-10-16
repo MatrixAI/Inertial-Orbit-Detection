@@ -236,8 +236,8 @@ void readFromOrbitDetectionServer() {
         if (directionAndRps != null) {
 
             println("Acquired new Direction and RPS!");
-            orbitDirection = int(directionAndRps[0]);
-            orbitRPS = float(directionAndRps[1]);
+            orbitRPS = float(directionAndRps[0]);
+            orbitDirection = int(directionAndRps[1]);
 
         }
 

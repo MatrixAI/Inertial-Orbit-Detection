@@ -129,7 +129,8 @@ def main:
     process_pool = None
     controller = None
     server = None
-    analysis_server_chan = queue.Queue()
+    # queue size of 1
+    analysis_server_chan = queue.Queue(1)
 
     # if we need to graph, we'll setup the graph
     if command_line_args.graph:

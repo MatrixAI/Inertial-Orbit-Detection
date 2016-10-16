@@ -1,7 +1,7 @@
 from copy import deepcopy
 import serial
 import window_processing
-import timer
+import time
 import logging
 
 controller_message_regex = re.compile('^Time.(\d+).X.(\d+).Y.(\d+).Z.(\d+)', re.I)
@@ -17,7 +17,7 @@ def read_from_controller(controller, frame_start_byte, frame_end_byte):
 
         # read bytes until we get the frame end byte
         intermediate_byte = sensor.read(1)
-        message_buffer = b"" 
+        message_buffer = bytearray()
         while (intermediate_byte != frame_end_byte):
             message_buffer += intermediate_byte
             intermediate_byte = sensor.read(1)
@@ -226,4 +226,4 @@ def run(
             rolling_window_interval['z'] = [sample_z_accel]
 
         # yield to other threads
-        timer.sleep(0)
+        time.sleep(0)

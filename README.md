@@ -184,3 +184,10 @@ def reset(controller):
 ---
 
 In the future, the server should be resilient to device plugins and unplugs. Detect both of these and continue running. When unplugging, it should signal game to reset (or close the game), and then restart from the beginning. It should also deal with when the device stops answering, and attempt to reset the game controller until it works, or after a few retries, indicate that the device is broken, and signal the game to exit, and close itself. The server itself should be starting the game, so the game should be a child process of the parent process.
+
+---
+
+Although we would want to use: http://stackoverflow.com/a/2162188/582917
+We cannot use select on queues currently. And the current one only works on multiprocessing queues. And even though select.select works on unix computers, it currently does not work on Windows. So that is problematic. So we just to use an event loop.
+
+> Portability alert: On Unix, select works both with the sockets and files. Don’t try this on Windows. On Windows, select works with sockets only. Also note that in C, many of the more advanced socket options are done differently on Windows. In fact, on Windows I usually use threads (which work very, very well) with my sockets.

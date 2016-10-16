@@ -40,11 +40,26 @@ def create_analyse_rotation_process_callback(channel, graph):
 
         (norm_data_window, frequencies, wave_properties, rotation_direction) = package
 
-        # send data to the server_loop!
-        # use the channel luke!
+        if rotation_direction == 1:
+            logging.info("Clockwise Direction")
+        elif rotation_direction == -1:
+            logging.info("Anticlockwise Direction")
+        else:
+            logging.info("Unknown Direction")
+
+        rps = (frequencies["east"] + frequencies["up"]) / 2
+
+        logging.info("RPS East: {}", frequencies["east"])
+        logging.info("RPS Up: {}", frequencies["up"])
+        logging.info("RPS Average: {}", rps)
+
+        channel.put((rps, rotation_direction))
 
         if graph:
             graphing.display(graph, norm_data_window, frequencies, wave_properties)
+
+        # block until all tasks in the channel is processed with channel.task_done()
+        channel.join()
 
     return analyse_rotation_process_callback
 

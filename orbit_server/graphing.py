@@ -16,7 +16,7 @@ def setup(lower_y, upper_y):
     
     # set the labels of the plot
     axes.set_xlabel('Time (s)')
-    axes.set_ylabel('Accleration (m/s^2)')
+    axes.set_ylabel('Acceleration (m/s^2)')
     
     # set the y limits of the plot
     axes.set_ylim(lower_y, upper_y)
