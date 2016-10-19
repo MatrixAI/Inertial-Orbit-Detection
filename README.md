@@ -201,3 +201,7 @@ Other: http://arduino.stackexchange.com/a/4222/27186
 Also note the DOS issue in TCP and arduino.
 
 * https://github.com/igormiktor/arduino-EventManager
+
+* http://www.dsfcode.com/using-processing-via-the-command-line/ (Linux automatically has processing-java)
+
+See: https://github.com/processing/processing/wiki/Changes-in-3.0#things-that-may-break-your-2x-sketches

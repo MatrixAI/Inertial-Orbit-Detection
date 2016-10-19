@@ -188,9 +188,11 @@ def run(
             # the `filled_rolling_window` starts out as False
             # only at the completion of the initial window do we change to True
             # once it is True, it stays True, for the rest of this event loop
-            if (not filled_rolling_window 
+            if (
+                not filled_rolling_window 
                 and rolling_window_start is not None 
-                and (rolling_window_start + time_window_ms < sample_time_ms)): 
+                and (rolling_window_start + time_window_ms < sample_time_ms)
+            ): 
                 filled_rolling_window = True 
 
             # roll the window with the new interval
