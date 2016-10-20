@@ -15,3 +15,5 @@ final float wallLastAddTime = 0;
 final color wallColors = color(240, 248, 255);
 final int minGapHeight = 250;
 final int maxGapHeight = 300;
+
+final long pingPongTimeout = 5;

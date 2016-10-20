@@ -1,24 +1,27 @@
 import processing.net.*;
 
 String serverAddress;
-int serverPort;
+int    serverPort;
+
 int gameWidth;
 int gameHeight;
+int gameCenterX;
+int gameCenterY;
 
 Client client;
+int    pingPongTime;
 
-FSM game;
-State gameStart = new State(this, "enterStart", "runStart", "exitStart");
+FSM   game;
+State gameStart   = new State(this, "enterStart",   "runStart",   "exitStart");
 State gamePlaying = new State(this, "enterPlaying", "runPlaying", "exitPlaying");
-State gameOver = new State(this, "enterOver", "runOver", "exitOver");
+State gameOver    = new State(this, "enterOver",    "runOver",    "exitOver");
 
-int score;
-int balloonX, balloonY;
-RPSAndDir rpsAndDir;
+float rotationRps;
+int   rotationDirection;
+int   score;
+int   balloonX, balloonY;
+
 ArrayList<int[]> walls = new ArrayList<int[]>(); 
-ArrayList<int[]> clouds = new ArrayList<int[]>(); 
-
-long pingPongTime;
 
 
 /**
@@ -33,46 +36,48 @@ long pingPongTime;
  */
 void settings() {
 
-    gameWidth = 500;
-    gameHeight = 500;
+    this.gameWidth = 500;
+    this.gameHeight = 500;
     boolean displayFullScreen = false;
 
     // args may be null
-    // the first parameter other than the program name is placed at 0 index
-    if (args != null) {
+    if (this.args != null) {
 
-        if (args.length >= 1) {
-            serverAddress = args[0];
+        if (this.args.length >= 1) {
+            this.serverAddress = this.args[0];
         }
 
-        if (args.length >= 2) {
-            serverPort = int(args[1]);
+        if (this.args.length >= 2) {
+            this.serverPort = int(this.args[1]);
         }
 
-        if (args.length >= 3) {
-            gameWidth = int(args[2]);
+        if (this.args.length >= 3) {
+            this.gameWidth = int(this.args[2]);
         }
 
         if (args.length >= 4) {
-            gameHeight = int(args[3]);
+            this.gameHeight = int(this.args[3]);
         }
 
         if (
-            args[args.length - 1] == "-f"
-            || args[args.length - 1] == "--fullscreen"
+            this.args[this.args.length - 1] == "-f"
+            || this.args[this.args.length - 1] == "--fullscreen"
         ) {
-            gameWidth = displayWidth;
-            gameHeight = displayHeight;
+            this.gameWidth = this.displayWidth;
+            this.gameHeight = this.displayHeight;
             displayFullScreen = true;
         }
 
     }
 
     if (!displayFullScreen) {
-        size(gameWidth, gameHeight);
+        size(this.gameWidth, this.gameHeight);
     } else {
         fullScreen();
     }
+
+    this.gameCenterX = this.gameWidth / 2;
+    this.gameCenterY = this.gameHeight / 2;
 
 }
 
@@ -83,25 +88,23 @@ void setup() {
 
     // ints cannot be null, so 0 is the sentinel value of serverPort
     if (
-        serverAddress == null 
-        || serverPort == 0 
+        this.serverAddress == null 
+        || this.serverPort == 0 
     ) {
         // overrided exit is only available at setup and beyond
         println("Server Address and Server Port is Needed");
         exit();
     }
 
-    // Client does not throw exceptions
-    client = new Client(this, serverAddress, serverPort); 
-    if (!client.active()) {
-        println("Game Client Couldn't Connect to Server");
+    this.client = this.clientEstablish(this.serverAddress, this.serverPort);
+    if (this.client == null) {
+        println("Game Client Couldn't Connect");
         exit();
     }
-    client.clear();
-    pingPongTime = System.currentTimeMillis() / 1000L;
+    
+    this.pingPongTime = millis() / 1000;
 
-    // transition to the initial game state
-    game = new FSM(gameStart);
+    this.game = new FSM(this.gameStart);
 
 }
 
@@ -110,10 +113,7 @@ void setup() {
  */
 void exit() {
 
-    if (client != null) {
-        client.clear();
-        client.stop();
-    }
+    this.clientShutdown(client);
     super.exit();
 
 }
@@ -123,8 +123,28 @@ void exit() {
  */
 void draw() {
 
+    boolean clientStatus = this.clientLiveCheck(
+        this.client, 
+        this.pingPongTimeout, 
+        this.pingPongTime
+    );
+
+    if (!clientStatus) {
+
+        println("Game Client Lost Connection, Restarting Connection");
+        this.clientShutdown(client);
+        this.client = this.clientEstablish(this.serverAddress, this.serverPort);
+        if (this.client == null) {
+            println("Game Client Couldn't Reconnect");
+            exit();
+        }
+
+    }
+
+    // put this on a delay (in the setup, rather than in the event loop)
+    this.clientPing(client);
+
     game.update();
-    clientPingPongCheck();
 
 }
 
@@ -133,10 +153,11 @@ void draw() {
  */
 void clientEvent() {
 
-    // only update the current rps and dir, if its a new frame from the orbit server
-    RPSAndDir newRpsAndDir = clientReadOrbitServer(client, pingPongTime);
-    if (newRpsAndDir != null) {
-        rpsAndDir = newRpsAndDir;
+    ClientUpdate clientUpdate = this.clientRead(this.client, this.pingPongTime);
+    if (clientUpdate != null) {
+        this.rotationRps = clientUpdate.rps;
+        this.rotationDirection = clientUpdate.direction; 
+        this.pingPongTime = clientUpdate.pingPongTime;
     }
 
 }
@@ -146,12 +167,12 @@ void clientEvent() {
  */
 void keyPressed() { 
 
-    switch (game.getCurrentState()) {
-        case gameStart:
-            game.transitionTo(gamePlaying);
+    switch (this.game.getCurrentState()) {
+        case this.gameStart:
+            this.game.transitionTo(this.gamePlaying);
         break;
-        case gameOver:
-            game.transitionTo(gameStart);
+        case this.gameOver:
+            this.game.transitionTo(this.gameStart);
         break; 
     }
 
@@ -175,8 +196,8 @@ void exitStart() {
 
 void enterPlaying() {
 
-    balloonX = displayWidth / 2;
-    balloonY = displayHeight / 2;
+    this.balloonX = this.gameCenterX;
+    this.balloonY = this.gameCenterY;
 
 }
 
@@ -195,13 +216,13 @@ void enterOver() {
     fill(255);
     
     textSize(12);
-    text("Your Score", gameWidth / 2, gameHeight / 2 - 120);
+    text("Your Score", this.gameCenterX, this.gameCenterY - 120);
     
     textSize(130);
-    text(score, gameWidth / 2, gameHeight / 2);
+    text(score, this.gameCenterX, this.gameCenterY);
     
     textSize(15);
-    text("Press any key to restart", gameWidth / 2, gameHeight-30);
+    text("Press any key to restart", this.gameCenterX, this.gameHeight-30);
 
 }
 
