@@ -131,10 +131,9 @@ class RotationTCPHandler(socketserver.BaseRequestHandler):
         while True:
             
             # poll for the pinging action failure
-            if (ping_pong_failure.is_set()) {
+            if (ping_pong_failure.is_set()): 
                 logging.exception("Error pinging client: {}", self.request.getpeername())
                 break
-            }
 
             # poll the client
             try:
@@ -145,7 +144,7 @@ class RotationTCPHandler(socketserver.BaseRequestHandler):
 
                 # no data arrived, only check if the ping pong protocol timed out
                 # otherwise continue to the next step
-                if int(time.time()) > ping_pong_time + ping_pong_timeout:
+                if int(time.time()) >= ping_pong_time + ping_pong_timeout:
                     logging.info("Client timed out: {}", self.request.getpeername())
                     break 
                 else:

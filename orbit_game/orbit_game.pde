@@ -9,7 +9,8 @@ int gameCenterX;
 int gameCenterY;
 
 Client client;
-int    pingPongTime;
+int    pingPongReceiveTime;
+int    pingPongSendTime;
 
 FSM   game;
 State gameStart   = new State(this, "enterStart",   "runStart",   "exitStart");
@@ -18,11 +19,11 @@ State gameOver    = new State(this, "enterOver",    "runOver",    "exitOver");
 
 float rotationRps;
 int   rotationDirection;
-int   score;
+float balloonVertVelocity;
 int   balloonX, balloonY;
+int   score;
 
 ArrayList<int[]> walls = new ArrayList<int[]>(); 
-
 
 /**
  * Settings is the hook designed for setting the window size based on variables.
@@ -82,6 +83,16 @@ void settings() {
 }
 
 /**
+ * Override the exit handler, so we close the client connection if its available.
+ */
+void exit() {
+
+    this.clientShutdown(this.client);
+    super.exit();
+
+}
+
+/**
  * Sets up the game.
  */
 void setup() { 
@@ -101,20 +112,13 @@ void setup() {
         println("Game Client Couldn't Connect");
         exit();
     }
-    
-    this.pingPongTime = millis() / 1000;
+
+    // initialise both ping pong send and receive time to the current time
+    int currentTime = this.getCurrentTime();
+    this.pingPongSendTime = currentTime;
+    this.pingPongReceiveTime = currentTime;
 
     this.game = new FSM(this.gameStart);
-
-}
-
-/**
- * Override the exit handler, so we close the client connection if its available.
- */
-void exit() {
-
-    this.clientShutdown(client);
-    super.exit();
 
 }
 
@@ -123,14 +127,16 @@ void exit() {
  */
 void draw() {
 
-    boolean clientStatus = this.clientLiveCheck(
+    int currentTime = this.getCurrentTime();
+
+    boolean pongStatus = this.clientPongCheck(
         this.client, 
         this.pingPongTimeout, 
-        this.pingPongTime
+        this.pingPongReceiveTime, 
+        currentTime
     );
 
-    if (!clientStatus) {
-
+    if (!pongStatus) {
         println("Game Client Lost Connection, Restarting Connection");
         this.clientShutdown(client);
         this.client = this.clientEstablish(this.serverAddress, this.serverPort);
@@ -138,27 +144,30 @@ void draw() {
             println("Game Client Couldn't Reconnect");
             exit();
         }
-
     }
 
-    // put this on a delay (in the setup, rather than in the event loop)
-    this.clientPing(client);
+    boolean pingStatus = this.clientPingCheck(
+        this.client, 
+        this.pingPongInterval,
+        this.pingPongSendTime,
+        currentTime
+    );
 
-    game.update();
-
-}
-
-/**
- * Client Event Handler
- */
-void clientEvent() {
-
-    ClientUpdate clientUpdate = this.clientRead(this.client, this.pingPongTime);
-    if (clientUpdate != null) {
-        this.rotationRps = clientUpdate.rps;
-        this.rotationDirection = clientUpdate.direction; 
-        this.pingPongTime = clientUpdate.pingPongTime;
+    if (pingStatus) {
+        this.pingPongSendTime = currentTime;
     }
+
+    ClientData clientData = this.clientRead(this.client);
+
+    if (clientData != null) {
+        if (clientData.rps != null and clientData.direction != null) {
+            this.rotationRps         = clientData.rps;
+            this.rotationDirection   = clientData.direction; 
+        }
+        this.pingPongReceiveTime = currentTime;
+    }
+
+    this.game.update();
 
 }
 
@@ -178,6 +187,19 @@ void keyPressed() {
 
 }
 
+/**
+ * Get the current time since this program started in seconds.
+ */
+int getCurrentTime() {
+
+    return millis() / 1000;
+
+}
+
+////////////////////////////////
+// Game Start State Functions //
+////////////////////////////////
+
 void enterStart() {
     
     background(251, 185, 1);
@@ -194,10 +216,15 @@ void exitStart() {
     // nothing to do here
 }
 
+//////////////////////////////////
+// Game Playing State Functions //
+//////////////////////////////////
+
 void enterPlaying() {
 
     this.balloonX = this.gameCenterX;
     this.balloonY = this.gameCenterY;
+    this.balloonVertVelocity = 0;
 
 }
 
@@ -208,6 +235,10 @@ void runPlaying() {
 void exitPlaying() {
 
 }
+
+///////////////////////////////
+// Game Over State Functions //
+///////////////////////////////
 
 void enterOver() {
 
@@ -222,7 +253,7 @@ void enterOver() {
     text(score, this.gameCenterX, this.gameCenterY);
     
     textSize(15);
-    text("Press any key to restart", this.gameCenterX, this.gameHeight-30);
+    text("Press any key to restart", this.gameCenterX, this.gameHeight - 30);
 
 }
 
@@ -232,11 +263,8 @@ void runOver() {
 
 void exitOver() {
 
-    score = 0;
-    lastAddTime = 0;
     walls.clear();
-    balloonVertVelocity = 0;
-    balloonHoriVelocity = 0;
+    this.score = 0;
+    this.balloonVertVelocity = 0;
 
 }
-

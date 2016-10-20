@@ -3,23 +3,27 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 StringBuilder message_buffer = new StringBuilder();
+
 Pattern game_protocol = Pattern.compile("^(?:[^S]*)(?:S(.*?)E)?");
 String rpsAndDirRegex = "(-?[0-1]):((?:[0-9]*[.])?[0-9]+)";
 
-class ClientUpdate {
+class ClientData {
 
-    float rps;
-    int direction;
-    int pingPongTime;
+    Float rps;
+    Integer direction;
 
-    ClientUpdate(float rps, int direction, int pingPongTime) {
+    ClientData(Float rps, Integer direction) {
         this.rps = rps;
         this.direction = direction;
-        this.pingPongTime = pingPongTime;
     }
 
 }
 
+/**
+ * Established a new TCP connection to the Orbit Server.
+ * Since Processing's Client doesn't throw exceptions, it'll check if the connection worked.
+ * It also clears any data in the client buffer.
+ */
 Client clientEstablish(serverAddress, serverPort) {
     
     Client client = new Client(this, serverAddress, serverPort);
@@ -31,40 +35,65 @@ Client clientEstablish(serverAddress, serverPort) {
 
 }
 
+/**
+ * Shutsdown the client if is still active, will also clear the buffer.
+ */
 void clientShutdown(Client client) {
 
-    // find out if this works with non-active connection
-    client.clear();
-    client.stop();
-
-}
-
-boolean clientPing(Client client) {
-
     if (client.active()) {
-        client.write("SPINGE");
-        return true;
+        client.clear();
+        client.stop();
     }
-    return false;
 
 }
 
-boolean clientLiveCheck(Client client, int pingPongTimeout, int pingPongTime) {
+/**
+ * Checks if it is the right time to ping the Orbit Server for liveness.
+ * Returns true if it checked, returns false it hasn't checked.
+ * The caller needs to update the pingPongSendTime if true is returned.
+ */
+boolean clientPingCheck(Client client, int pingPongInterval, int pingPongSendTime, int currentTime) {
 
     if (!client.active()) {
         return false;
     }
 
-    long currentTime = System.currentTimeMillis() / 1000L;
-    if (currentTime > (pingPongTime + pingPongTimeout)) {
-        return false;    
+    if (currentTime >= (pingPongSendTime + pingPongInterval)) {
+        client.write("SPINGE");
+        return true;
+    }
+
+    return false;
+
+}
+
+/**
+ * Checks if the connection hasn't timed out according to the ping pong protocol.
+ * Also checks if the connection is still active.
+ * The caller should handle a timed-out or closed connection appropriately.
+ */
+boolean clientPongCheck(Client client, int pingPongTimeout, int pingPongReceiveTime, int currentTime) {
+
+    if (!client.active()) {
+        return false;
+    }
+
+    if (currentTime >= (pingPongReceiveTime + pingPongTimeout)) {
+        return false; 
     }
 
     return true;
 
 }
 
-ClientUpdate clientRead(Client client, int pingPongTime) {
+/**
+ * Polls the connection and tries to acquire a message frame.
+ * Will buffer the byte-stream content until a message frame is available.
+ * This is non-blocking, it will just return what is available.
+ * The caller must update the pingPongReceiveTime if any ClientData is returned.
+ * However the properties of ClientData may be null, if the message was not a RPS and direction message.
+ */
+ClientData clientRead(Client client) {
 
     Matcher lexer;
     String token;
@@ -102,9 +131,6 @@ ClientUpdate clientRead(Client client, int pingPongTime) {
                     }
                 }
 
-                // since the server responded, we just update the ping pong time
-                pingPongTime = millis() / 1000;
-
             }
 
             this.message_buffer.delete(lexer.start(), lexer.end());
@@ -115,11 +141,22 @@ ClientUpdate clientRead(Client client, int pingPongTime) {
 
     if (acquired) {
 
-        return new ClientUpdate(
-            float(rpsAndDirMatches[0]), 
-            int(rpsAndDirMatches[1]),
-            pingPongTime
-        );
+        // if just get a PING/PONG message, then its still client data, but no rps and dir updates
+        if (rpsAndDirMatches != null) {
+
+            return new ClientData(
+                float(rpsAndDirMatches[0]), 
+                int(rpsAndDirMatches[1])
+            );
+
+        } else {
+
+            return new ClientData(
+                null,
+                null
+            );
+
+        }
 
     } else {
 

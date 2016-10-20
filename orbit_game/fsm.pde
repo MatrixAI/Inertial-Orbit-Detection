@@ -1,12 +1,3 @@
-/*
-
-     _  _(o)_(o)_  _
-   ._\`:_ F S M _:' \_,
-       / (`---'\ `-.
-    ,-`  _)    (_, 
-
-*/
-
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
