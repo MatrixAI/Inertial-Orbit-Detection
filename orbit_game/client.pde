@@ -2,10 +2,7 @@ import processing.net.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-StringBuilder message_buffer = new StringBuilder();
-
-Pattern game_protocol = Pattern.compile("^(?:[^S]*)(?:S(.*?)E)?");
-String rpsAndDirRegex = "(-?[0-1]):((?:[0-9]*[.])?[0-9]+)";
+StringBuilder messageBuffer = new StringBuilder();
 
 class ClientData {
 
@@ -24,7 +21,7 @@ class ClientData {
  * Since Processing's Client doesn't throw exceptions, it'll check if the connection worked.
  * It also clears any data in the client buffer.
  */
-Client clientEstablish(serverAddress, serverPort) {
+Client clientEstablish(String serverAddress, int serverPort) {
     
     Client client = new Client(this, serverAddress, serverPort);
     if (!client.active()) {
@@ -93,7 +90,7 @@ boolean clientPongCheck(Client client, int pingPongTimeout, int pingPongReceiveT
  * The caller must update the pingPongReceiveTime if any ClientData is returned.
  * However the properties of ClientData may be null, if the message was not a RPS and direction message.
  */
-ClientData clientRead(Client client) {
+ClientData clientRead(Client client, Pattern messageProtocol, String rpsAndDirRegex) {
 
     Matcher lexer;
     String token;
@@ -107,8 +104,8 @@ ClientData clientRead(Client client) {
 
     if (client.available() > 0) {
 
-        this.message_buffer.append(client.readString());
-        lexer = this.game_protocol.matcher(this.message_buffer.toString());
+        this.messageBuffer.append(client.readString());
+        lexer = messageProtocol.matcher(this.messageBuffer.toString());
 
         if (lexer.find()) {
 
@@ -119,7 +116,7 @@ ClientData clientRead(Client client) {
                 acquired = true;
 
                 // process the message token
-                rpsAndDirMatches = match(token, this.rpsAndDirRegex);
+                rpsAndDirMatches = match(token, rpsAndDirRegex);
                 if (rpsAndDirMatches == null) {
                     switch (token) {
                         case "PING":
@@ -133,7 +130,7 @@ ClientData clientRead(Client client) {
 
             }
 
-            this.message_buffer.delete(lexer.start(), lexer.end());
+            this.messageBuffer.delete(lexer.start(), lexer.end());
 
         }
 

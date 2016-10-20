@@ -3,14 +3,14 @@ import processing.net.*;
 String serverAddress;
 int    serverPort;
 
+Client client;
+int    pingPongReceiveTime;
+int    pingPongSendTime;
+
 int gameWidth;
 int gameHeight;
 int gameCenterX;
 int gameCenterY;
-
-Client client;
-int    pingPongReceiveTime;
-int    pingPongSendTime;
 
 FSM   game;
 State gameStart   = new State(this, "enterStart",   "runStart",   "exitStart");
@@ -19,9 +19,6 @@ State gameOver    = new State(this, "enterOver",    "runOver",    "exitOver");
 
 float rotationRps;
 int   rotationDirection;
-float balloonVertVelocity;
-int   balloonX, balloonY;
-int   score;
 
 ArrayList<int[]> walls = new ArrayList<int[]>(); 
 
@@ -157,7 +154,7 @@ void draw() {
         this.pingPongSendTime = currentTime;
     }
 
-    ClientData clientData = this.clientRead(this.client);
+    ClientData clientData = this.clientRead(this.client, this.messageProtocol, this.rpsAndDirTokenRegex);
 
     if (clientData != null) {
         if (clientData.rps != null and clientData.direction != null) {
@@ -193,78 +190,5 @@ void keyPressed() {
 int getCurrentTime() {
 
     return millis() / 1000;
-
-}
-
-////////////////////////////////
-// Game Start State Functions //
-////////////////////////////////
-
-void enterStart() {
-    
-    background(251, 185, 1);
-    textAlign(CENTER);
-    text("Press any key to start", height/2, width/2);
-
-}
-
-void runStart() {
-    // nothing to do here
-}
-
-void exitStart() {
-    // nothing to do here
-}
-
-//////////////////////////////////
-// Game Playing State Functions //
-//////////////////////////////////
-
-void enterPlaying() {
-
-    this.balloonX = this.gameCenterX;
-    this.balloonY = this.gameCenterY;
-    this.balloonVertVelocity = 0;
-
-}
-
-void runPlaying() {
-
-}
-
-void exitPlaying() {
-
-}
-
-///////////////////////////////
-// Game Over State Functions //
-///////////////////////////////
-
-void enterOver() {
-
-    background(251, 185, 1);
-    textAlign(CENTER);
-    fill(255);
-    
-    textSize(12);
-    text("Your Score", this.gameCenterX, this.gameCenterY - 120);
-    
-    textSize(130);
-    text(score, this.gameCenterX, this.gameCenterY);
-    
-    textSize(15);
-    text("Press any key to restart", this.gameCenterX, this.gameHeight - 30);
-
-}
-
-void runOver() {
-
-}
-
-void exitOver() {
-
-    walls.clear();
-    this.score = 0;
-    this.balloonVertVelocity = 0;
 
 }

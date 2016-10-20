@@ -1,3 +1,5 @@
+import java.util.regex.Pattern;
+
 final float rotationRPSScalingFactor = 0.6;
 
 final int balloonSize = 25;
@@ -18,3 +20,6 @@ final int maxGapHeight = 300;
 
 final int pingPongTimeout = 5;
 final int pingPongInterval = 2; 
+
+final Pattern messageProtocol = Pattern.compile("^(?:[^S]*)(?:S(.*?)E)?");
+final String rpsAndDirTokenRegex = "(-?[0-1]):((?:[0-9]*[.])?[0-9]+)";

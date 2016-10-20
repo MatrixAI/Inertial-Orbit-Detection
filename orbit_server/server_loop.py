@@ -72,13 +72,13 @@ class RotationTCPHandler(socketserver.BaseRequestHandler):
         
         # this regular expression will always succeed and match something or nothing
         # a problem with this is it can receive a DOS if a client sends a large message of garbage
-        self.game_protocol = re.compile(
+        self.message_protocol = re.compile(
             """
                 ^
-                (?:[^S]*)  # drop everything before the frame start, this gives us the drop range
-                (?:S(    # frame start
+                (?:[^S]*) # drop everything before the frame start, this gives us the drop range
+                (?:S(     # frame start
                     .*?
-                )E)?     # frame end
+                )E)?      # frame end
             """, 
             re.X
         )
@@ -183,7 +183,7 @@ class RotationTCPHandler(socketserver.BaseRequestHandler):
                     client_input_buffer.extend(client_data)
                     
                     # the regular expression always match something or nothing, it will not return None
-                    lexical_analysis = re.search(self.game_protocol, client_input_buffer.decode('ascii'))
+                    lexical_analysis = re.search(self.message_protocol, client_input_buffer.decode('ascii'))
                     
                     # a token may not be extracted, if so, we just just pass to the next stage
                     token = lexical_analysis.group(1)
