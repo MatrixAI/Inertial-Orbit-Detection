@@ -38,7 +38,7 @@ def main:
         type=str,
         choices=[k for k in accelerometers.accel_sensors]
         help="Accelerometer Sensor Type",
-        default="am3x-1g"
+        default="am3x-1.5g"
     )
     command_line_parser.add_argument(
         "-ea", 
