@@ -8,6 +8,28 @@ import re
 import logging
 
 
+class TimerForever():
+
+    def __init__(self, interval, callback, args=[], kwargs={}):
+        self.intervalTime = intervalTime
+        self.callback = callback 
+        self.args = args
+        self.kwargs = kwargs
+        self.thread = thread.Timer(self.intervalTime, self.call_callback)
+
+    def call_callback(self):
+        self.callback(*self.args, **self.kwargs)
+        self.thread = thread.Timer(self.intervalTime, self.call_callback)
+        self.thread.start()
+
+    def start(self):
+        self.thread.start()
+
+    def cancel(self):
+        if self.thread.is_alive():
+            self.thread.cancel()
+
+
 class RotationTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     """TCP server will be in its own thread, and handle TCP connection requests."""
     
@@ -50,7 +72,6 @@ class RotationTCPHandler(socketserver.BaseRequestHandler):
         
         # this regular expression will always succeed and match something or nothing
         # a problem with this is it can receive a DOS if a client sends a large message of garbage
-        # like `Sabcdefg...`
         self.game_protocol = re.compile(
             """
                 ^
@@ -65,11 +86,26 @@ class RotationTCPHandler(socketserver.BaseRequestHandler):
         super().__init__(request, client_address, server)
         # socketserver.BaseRequestHandler.__init__(self, request, client_address, server)
 
-    def graceful_close(socket):
+    def graceful_close(self):
 
-        socket.shutdown(socket.SHUT_RDWR)
-        socket.close()
-        return
+        self.request.shutdown(socket.SHUT_RDWR)
+        self.request.close()
+
+    def server_ping(self, interval, fail_event):
+
+        ping_action = None
+
+        def ping():
+            try:
+                self.request.sendall(b"SPINGE");
+            except:
+                fail_event.set()
+                ping_action.cancel()
+
+        ping_action = TimerForever(interval, ping)
+
+        return ping_action
+
 
     def handle(self):
         
@@ -82,20 +118,23 @@ class RotationTCPHandler(socketserver.BaseRequestHandler):
 
         # we will use a PING PONG protocol for keeping alive this connection
         # this is because TCP keepalive is not easily usable on all OS platforms
-        ping_pong_time = int(time.time())
+        # ping timeout will be 5 seconds, and pinging interval will be 2 seconds
+        # the pinging action will take place in a separate thread
+        # if the pinging action fails, it will signal failure via the ping_pong_fail_event
+        ping_pong_time    = int(time.time())
         ping_pong_timeout = 5
+        ping_pong_failure = threading.Event()
+        ping_action       = self.server_ping(2, ping_pong_failure)
 
         client_input_buffer = bytearray()
 
         while True:
             
-            # PING the client
-            try: 
-                self.request.sendall(b"SPINGE")
-            except: 
-                logging.exception("Error in writing to socket, closing connection to: {}", self.request.getpeername())
-                self.graceful_close(self.request)
-                return
+            # poll for the pinging action failure
+            if (ping_pong_failure.is_set()) {
+                logging.exception("Error pinging client: {}", self.request.getpeername())
+                break
+            }
 
             # poll the client
             try:
@@ -107,21 +146,18 @@ class RotationTCPHandler(socketserver.BaseRequestHandler):
                 # no data arrived, only check if the ping pong protocol timed out
                 # otherwise continue to the next step
                 if int(time.time()) > ping_pong_time + ping_pong_timeout:
-                    logging.info("Client timed out, closing connection to: {}", self.request.getpeername())
-                    self.request.shutdown(socket.SHUT_RDWR)
-                    self.request.close()
-                    return
+                    logging.info("Client timed out: {}", self.request.getpeername())
+                    break 
                 else:
                     client_data = None
 
             # socket.error is more general than socket.timeout, it must be caught later
             except socket.error as e:
 
-                logging.exception("Error in reading from socket, closing connection to: {}", self.request.getpeername())
-                self.graceful_close(self.request)
-                return
+                logging.exception("Error in reading from  connection: {}", self.request.getpeername())
+                break 
 
-            # poll the channel, if the channel is empty, it raises an exception
+            # poll the channel
             try:
                 server_data = self.channel.get_nowait()
             except queue.Empty:
@@ -132,12 +168,10 @@ class RotationTCPHandler(socketserver.BaseRequestHandler):
 
                 (rps, rotation_direction) = server_data
                 try:
-                    # blocks until all data is sent (it doesn't necessarily wait for ACKs)
                     self.request.sendall(bytes("S{0}:{1}E".format(rps, rotation_direction), 'ascii'))
                 except socket.error as e:
-                    logging.exception("Error in writing to socket, closing connection to: {}", self.request.getpeername())
-                    self.graceful_close(self.request)
-                    return
+                    logging.exception("Error writing to connection: {}", self.request.getpeername())
+                    break
 
             # handle the client_data
             if client_data is not None:
@@ -158,12 +192,12 @@ class RotationTCPHandler(socketserver.BaseRequestHandler):
                         if   token == "PING":
 
                             ping_pong_time = int(time.time())
+                            
                             try: 
                                 self.request.sendall(b"SPONGE")
                             except: 
-                                logging.exception("Error in writing to socket, closing connection to: {}", self.request.getpeername())
-                                self.graceful_close(self.request)
-                                return
+                                logging.exception("Error writing to connection: {}", self.request.getpeername())
+                                break
 
                         elif token == "PONG":
 
@@ -175,11 +209,16 @@ class RotationTCPHandler(socketserver.BaseRequestHandler):
                 else:
 
                     # this means we received EOF character from the client
-                    logging.info("Client closed connection, closing connection to: {}", self.request.getpeername())
-                    self.graceful_close(self.request)
-                    return
+                    logging.info("Client closed connection: {}", self.request.getpeername())
+                    break
 
             time.sleep(0)
+      
+        # event loop for the connection was broken, so here we just clean up the connection and pinging action 
+        logging.info("Closing connection to: {}", self.request.getpeername()) 
+
+        pinging_action.cancel()
+        self.graceful_close()
 
 def start(host, port, channel):
     
