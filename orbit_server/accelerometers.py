@@ -13,7 +13,7 @@ def create_accel_convert(accel_unit_max, volt_max, volt_base, volt_per_g, g_unit
 
 accel_sensors = {
     # from: www.freetronics.com.au/pages/am3x-quickstart-guide
-    "am3x-1g": {
+    "am3x-1.5g": {
         "g_units": 9.80665,
         "volt_base": 1.65,
         "volt_max": 5,
