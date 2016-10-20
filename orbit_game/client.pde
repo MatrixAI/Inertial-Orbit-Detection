@@ -119,7 +119,7 @@ ClientData clientRead(Client client) {
                 acquired = true;
 
                 // process the message token
-                rpsAndDirMatches = match(rpsAndDirString, this.rpsAndDirRegex);
+                rpsAndDirMatches = match(token, this.rpsAndDirRegex);
                 if (rpsAndDirMatches == null) {
                     switch (token) {
                         case "PING":
