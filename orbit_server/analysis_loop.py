@@ -96,13 +96,14 @@ def connect(device_path, baud_rate):
 
     logging.info("Waiting for device to be ready...")
 
-    # having no time out means the main thread event loop blocks on controller events
+    # having no time out means the main thread event loop will block on controller events
     # this does not affect the write timeout, only the read timeout
     controller.timeout = None
 
-    if controller.readline() != b"Ready!\n":
-        logging.info("Device was not ready! Exiting!")
-        raise IOError("Orbit Controller did not send `Ready!\\n`")
+    # wait until the device is ready (equivalent to a peek function on the serial device)
+    # having any data incoming from the controller signals readiness
+    while (controller.in_waiting < 1):
+        pass
 
     logging.info("Device is ready!")
 
