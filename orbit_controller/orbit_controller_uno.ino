@@ -1,13 +1,10 @@
-#define READY_DELAY 1000
 #define MESSAGE_DELAY 30
+#define READY_DELAY 1000
 
-boolean running = false;
+bool running;
 int x_axis = A0;
 int y_axis = A1;
 int z_axis = A2;
-unsigned long current_time;
-unsigned long last_ready_time;
-unsigned long last_message_time;
 
 /**
  * Flush the serial input buffer.
@@ -24,6 +21,7 @@ void flush_input () {
 void write_ready_message () {
 
     Serial.print("1");
+    Serial.flush();
 
 }
 
@@ -32,18 +30,13 @@ void write_ready_message () {
  * Except in the case of the USB CDC serial port, there's no way to know if the 
  * receiver closed the serial port. So periodic ready messages should be sent.
  * This is only needed when `running` is false.
- * Note that we do not need to check last_ready_time == 0, because a readiness 
- * message will always be sent at startup by `running_setup`.
  */
-void write_delayed_ready_message (unsigned long current_time) {
+void write_ready_message_periodic (unsigned long delay, unsigned long current_time, bool initial_action) {
 
-    if (current_time >= (last_ready_time + READY_DELAY)) {
-
+    static unsigned long last_time;
+    if ((initial_action && last_time == 0) || ((current_time - last_time) >= delay)) {
         write_ready_message();
-        Serial.flush();
-
-        last_ready_time = current_time;
-
+        last_time = current_time;
     }
 
 }
@@ -83,21 +76,27 @@ void write_accelerometer_values (unsigned long current_time) {
 }
 
 /**
- * Write the message frame.
- * It will write when the last message time was 0, indicating this is the first time writing.
- * It will also write when the current time passes through the delay interval.
+ * Write the message frame and flush.
  */
-void write_periodic_message (unsigned long current_time) {
+void write_message (unsigned long current_time) {
 
-    if ((last_message_time == 0) || (current_time >= (last_message_time + MESSAGE_DELAY))) {
+    write_frame_start();
+    write_accelerometer_values(current_time);
+    write_frame_end();
+    Serial.flush();
 
-        write_frame_start();
-        write_accelerometer_values(current_time);
-        write_frame_end();
-        Serial.flush();
+}
 
-        last_message_time = current_time;
+/**
+ * Write the message frame periodically.
+ * This is designed to be executed inside an event loop.
+ */
+void write_message_periodic (unsigned long delay, unsigned long current_time, bool initial_action) {
 
+    static unsigned long last_time;
+    if ((initial_action && last_time == 0) || ((current_time - last_time) >= delay)) {
+        write_message(current_time);
+        last_time = current_time;
     }
 
 }
@@ -120,30 +119,12 @@ void switch_running () {
 }
 
 /**
- * This is the real setup.
- * Then it writes the ready message.
- */
-void running_setup () {
-
-    // block until serial port is ready
-    // Serial is actually always ready due to being a HardwareSerial
-    while (!Serial);
-
-    // let the host know the device is ready immediately 
-    // without waiting on the delayed ready messages
-    write_ready_message();
-
-}
-
-/**
  * Setup will set the baud rate and let the host know its ready
  */
 void setup () {
 
     Serial.begin(9600);
-    running_setup();
-    last_ready_time = 0;
-    last_message_time = 0;
+    running = false;
 
 }
 
@@ -156,13 +137,14 @@ void setup () {
  */
 void loop () {
 
+    unsigned long current_time = millis();
+
     // allow running to be switched while running
     switch_running();
-    current_time = millis();
     if (running) {
-        write_periodic_message(current_time);
+        write_message_periodic(MESSAGE_DELAY, current_time, true);
     } else {
-        write_delayed_ready_message(current_time);
+        write_ready_message_periodic(READY_DELAY, current_time, true);
     }
 
 }

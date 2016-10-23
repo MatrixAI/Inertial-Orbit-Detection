@@ -281,4 +281,3 @@ v = ---
 Ok so basically we don't have wavelength. We just have period.
 
 Our period is 1.5 seconds.
-
