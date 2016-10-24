@@ -20,8 +20,6 @@ State gameOver    = new State(this, "enterOver",    "runOver",    "exitOver");
 float rotationRps;
 int   rotationDirection;
 
-ArrayList<int[]> walls = new ArrayList<int[]>(); 
-
 /**
  * Settings is the hook designed for setting the window size based on variables.
  * Here we interrogate the command line parameters, and set the server address, 
@@ -34,8 +32,8 @@ ArrayList<int[]> walls = new ArrayList<int[]>();
  */
 void settings() {
 
-    this.gameWidth = 500;
-    this.gameHeight = 500;
+    this.gameWidth = defaultGameWidth;
+    this.gameHeight = defaultGameHeight;
     boolean displayFullScreen = false;
 
     // args may be null
@@ -165,22 +163,6 @@ void draw() {
     }
 
     this.game.update();
-
-}
-
-/**
- * Key Event Handler
- */
-void keyPressed() { 
-
-    switch (this.game.getCurrentState()) {
-        case this.gameStart:
-            this.game.transitionTo(this.gamePlaying);
-        break;
-        case this.gameOver:
-            this.game.transitionTo(this.gameStart);
-        break; 
-    }
 
 }
 
