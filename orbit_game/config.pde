@@ -16,7 +16,6 @@ final int defaultGameHeight = 500;
 ///////////////////
 
 // assume pixels are meters
-
 // factor conversion of RPS to force in newtons
 final float rotationRPSToForceFactor = 4.0;
 // gravity in pixels/second^2
@@ -25,14 +24,15 @@ final float gravity = -9.8;
 final float hotBalloonWeight = 10;
 // velocity in pixels/second
 final float hotBalloonHoriVelocity = 1.0;
-
-final int wallSpeed = 3;
-final int wallInterval = 1600;
-final int wallWidth = 80;
-final float wallLastAddTime = 0;
-final color wallColors = color(240, 248, 255);
-final int minGapHeight = 250;
-final int maxGapHeight = 300;
+// the random range of distance between walls
+final float wallMinIntervalFactor = 0.1;
+final float wallMaxintervalFactor = 0.5;
+// the random range of gap height for each wall
+final float wallMinGapFactor = 0.3;
+final float wallMaxGapFactor = 0.8;
+// wall width
+final int wallMinWidthFactor = 0.1;
+final int wallMaxWidthFactor = 0.2;
 
 //////////////////////
 // Network Settings //

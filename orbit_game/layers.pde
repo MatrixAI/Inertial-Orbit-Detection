@@ -157,6 +157,47 @@ PGraphics createHotBalloon(int size) {
 }
 
 /**
+ * Draw a single wall. The width and height is the width and height of the entire wall including the gaps.
+ * The gap position is the Y-position from the top to the beginningof the gap.
+ * The gap height is the size of the gap opening.
+ */
+PGraphics createWall(int width, int height, int gapPosition, int gapHeight) {
+
+    PGraphics wall = createGraphics(width, height);
+
+    wall.beginDraw();
+    wall.rectMode(CORNER);
+    wall.strokeCap(ROUND);
+    wall.fill(color(240, 248, 255));
+
+    // top-half of the wall
+    // includes bottom corner radius
+    wall.rect(
+        0, 
+        0, 
+        width, 
+        gapPosition, 
+        0, 0, 
+        50, 50
+    ); 
+
+    // bottom-half of the wall
+    // includes top corner radius
+    wall.rect(
+        0, 
+        gapPosition + gapHeight, 
+        width, 
+        height, 
+        50, 50, 
+        0, 0
+    );
+
+    wall.endDraw();
+    return wall;
+
+}
+
+/**
  * Create Over State Screen
  */
 PGraphics createOverScreen(int width, int height, int score) {
@@ -165,6 +206,8 @@ PGraphics createOverScreen(int width, int height, int score) {
     int centerY = round(height / 2.0);
 
     PGraphics screen = createGraphics(width, height);
+
+    screen.beginDraw();
 
     screen.background(251, 185, 1);
     
