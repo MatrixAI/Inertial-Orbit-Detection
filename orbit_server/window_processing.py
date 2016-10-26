@@ -12,13 +12,12 @@ import numpy as np
 import logging
 
 def create_analyse_rotation_process(time_delta_ms, orientation, sensor_type):
-
+    
     # these will be used for sampling interpolation, frequency estimation, and sine wave regression
     time_delta_s = time_delta_ms / 1000
     sampling_rate = 1000 / time_delta_ms
 
     def analyse_rotation_process(data_window):
-        
         logging.info("Starting Window Processing Child Process %d", os.getpid())
         
         # normalise the raw acceleration data to linearly spaced & interpolated data with the given orientation

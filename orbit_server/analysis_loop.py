@@ -45,7 +45,12 @@ def roll_the_window(rolling_window, rolling_window_interval, rolling_time, shift
     Because the our rolling increment is based on time, this means the resulting window 
     size can change. If the existing window is empty, then the new window becomes the existing 
     window.
+
+    It will mutate the rolling_window, but values from rolling_window_interval will be cloned 
+    when they are pushed into the rolling_window.
     """
+
+    rolling_window_interval = deepcopy(rolling_window_interval)
 
     # if the existing window is empty, then the new window becomes the existing window
     if rolling_window and rolling_window['t']:
@@ -135,9 +140,13 @@ def run(
     rolling_window_interval_start = None
     rolling_window_interval_end = None
     filled_rolling_window = False
+    shift_rolling_window = False
 
     # tell the controller to start sending data
     controller.write(b'1')
+
+    # drop the first reading, because it's most likely an old sample that is queued in the serial port
+    read_from_controller(controller, b"S", b"E")
 
     # this is the initial loop setup
     # it will setup the first rolling interval
@@ -169,7 +178,7 @@ def run(
         ) = read_from_controller(controller, b"S", b"E")
 
         # if we are continuing the accumulation the rolling interval
-        if (rolling_window_interval_start is not None and (rolling_window_interval_start + time_interval_ms >= sample_time_ms)):
+        if (rolling_window_interval_start + time_interval_ms >= sample_time_ms):
 
             rolling_window_interval['t'].append(sample_time_ms)
             rolling_window_interval['x'].append(sample_x_accel)
@@ -177,7 +186,7 @@ def run(
             rolling_window_interval['z'].append(sample_z_accel)
 
         # else if we have finished accumulating a rolling interval
-        elif(rolling_window_interval_start is not None):
+        else: 
 
             rolling_window_interval_end = rolling_window_interval["t"][-1]
 
@@ -190,20 +199,27 @@ def run(
             # the `filled_rolling_window` starts out as False
             # only at the completion of the initial window do we change to True
             # once it is True, it stays True, for the rest of this event loop
+            # when it first turns True, that means the rolling window is just filled
+            # when it just filled, we don't start shifting the window
+            # only when it is _already_ filled, do we start shifting the window
+            # also the `rolling_window_start` can be None if there's an empty `rolling_window`
             if (
                 not filled_rolling_window 
                 and rolling_window_start is not None 
                 and (rolling_window_start + time_window_ms < sample_time_ms)
             ): 
-                filled_rolling_window = True 
 
-            # roll the window with the new interval
-            # this will allow us to acquire the start and end of this window
+                filled_rolling_window = True 
+            
+            elif (filled_rolling_window):
+            
+                shift_rolling_window = True
+
             rolling_window = roll_the_window(
                 rolling_window, 
                 rolling_window_interval, 
                 time_interval_ms, 
-                filled_rolling_window
+                shift_rolling_window
             )
             rolling_window_start = rolling_window["t"][0]
             rolling_window_end = rolling_window["t"][-1]
@@ -222,7 +238,9 @@ def run(
                     callback=window_processing.create_analyse_rotation_process_callback(channel, graph)
                 )
 
-            # start a new rolling_window_interval
+            # start a new rolling_window_interval with the most recently acquired sample
+            # this is because the rolling_window_interval was completed now and 
+            # the current sample represents the start of the next rolling_window_interval
             rolling_window_interval_start = sample_time_ms
             rolling_window_interval['t'] = [sample_time_ms]
             rolling_window_interval['x'] = [sample_x_accel]
