@@ -12,16 +12,16 @@ def read_from_controller(controller, frame_start_byte, frame_end_byte):
     # block until we get a proper message from the controller
     while True:
         # discard bytes until we find the frame start byte
-        starting_byte = sensor.read(1)
+        starting_byte = controller.read(1)
         if starting_byte != frame_start_byte:
             continue
 
         # read bytes until we get the frame end byte
-        intermediate_byte = sensor.read(1)
+        intermediate_byte = controller.read(1)
         message_buffer = bytearray()
         while (intermediate_byte != frame_end_byte):
             message_buffer += intermediate_byte
-            intermediate_byte = sensor.read(1)
+            intermediate_byte = controller.read(1)
 
         # decode bytes into a string
         message_buffer = message_buffer.decode("ascii")
@@ -147,7 +147,7 @@ def run(
         sample_y_accel, 
         sample_z_accel
     ) = read_from_controller(controller, b"S", b"E")
-    
+
     rolling_window_interval_start = sample_time_ms
     rolling_window_interval['t'] = [sample_time_ms]
     rolling_window_interval['x'] = [sample_x_accel]
