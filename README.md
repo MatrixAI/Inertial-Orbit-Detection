@@ -281,3 +281,7 @@ v = ---
 Ok so basically we don't have wavelength. We just have period.
 
 Our period is 1.5 seconds.
+
+---
+
+Move the below into the Service Discovery section of Matrix AI. One quick implementation would have to do with the game code. Passing serial port information, autobaud detection and TCP port and address assignment. I suspect registering the device so that its recognisable immediately involves installing a "driver", which in Linux should just be a udev file right?
