@@ -19,7 +19,7 @@ def create_analyse_rotation_process(time_delta_ms, orientation, sensor_type):
 
     def analyse_rotation_process(data_window):
         
-        logging.info("Starting Window Processing Child Process {}", os.getpid())
+        logging.info("Starting Window Processing Child Process %d", os.getpid())
         
         # normalise the raw acceleration data to linearly spaced & interpolated data with the given orientation
         norm_data_window = normalise_signals(data_window, time_delta_s, orientation, sensor_type)
@@ -49,9 +49,9 @@ def create_analyse_rotation_process_callback(channel, graph):
 
         rps = (frequencies["east"] + frequencies["up"]) / 2
 
-        logging.info("RPS East: {}", frequencies["east"])
-        logging.info("RPS Up: {}", frequencies["up"])
-        logging.info("RPS Average: {}", rps)
+        logging.info("RPS East: %d", frequencies["east"])
+        logging.info("RPS Up: %d", frequencies["up"])
+        logging.info("RPS Average: %d", rps)
 
         channel.put((rps, rotation_direction))
 

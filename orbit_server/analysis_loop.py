@@ -121,7 +121,7 @@ def run(
     channel, 
     graph 
 ):
-
+    
     logging.info("Running Analysis Loop")
 
     # the time window size determines the number of values that will be inside a data window
@@ -147,7 +147,7 @@ def run(
         sample_y_accel, 
         sample_z_accel
     ) = read_from_controller(controller, b"S", b"E")
-
+    
     rolling_window_interval_start = sample_time_ms
     rolling_window_interval['t'] = [sample_time_ms]
     rolling_window_interval['x'] = [sample_x_accel]
@@ -182,7 +182,7 @@ def run(
             rolling_window_interval_end = rolling_window_interval["t"][-1]
 
             logging.info(
-                "Rolling the Data Window with Interval at: {0} - {1}", 
+                "Rolling the Data Window with Interval at: %d - %d", 
                 rolling_window_interval_start, 
                 rolling_window_interval_end
             )
@@ -211,7 +211,7 @@ def run(
             # we only want to process filled rolling windows, not the initial partially filled window
             if filled_rolling_window:
 
-                logging.info("Processing Data Window at: {0} - {1}", rolling_window_start, rolling_window_end)
+                logging.info("Processing Data Window at: %d - %d", rolling_window_start, rolling_window_end)
                 
                 # the analysis will be executed in a child-process
                 # the callback will be executed in another thread of this main-process

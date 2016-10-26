@@ -2,7 +2,7 @@ import re
 import sys
 import argparse
 import accelerometers
-import signal as unix_signals
+import signal as unix_signal
 import server_loop
 import analysis_loop
 import multiprocessing
@@ -68,21 +68,21 @@ def main():
         "-tw", 
         "--time-window", 
         type=int, 
-        help="Rolling Time Window Size in Milliseconds",
+        help="Rolling Time Window Size in Milliseconds (default is 3000ms)",
         default=3000
     )
     command_line_parser.add_argument(
         "-ti", 
         "--time-interval", 
         type=int, 
-        help="Rolling Time Window Interval in Milliseconds",
+        help="Rolling Time Window Interval in Milliseconds (default is 150ms)",
         default=150
     )
     command_line_parser.add_argument(
         "-td", 
         "--time-delta", 
         type=int, 
-        help="Sampling Period in Milliseconds",
+        help="Sampling Period in Milliseconds (default is 30ms)",
         default=30
     )
     command_line_parser.add_argument(
@@ -155,10 +155,10 @@ def main():
 
     try: 
 
-        logging.info("Establishing TCP server at {0}:{1}", command_line_args.host, command_line_args.port)
+        logging.info("Establishing TCP server at %s:%d", command_line_args.host, command_line_args.port)
         server = server_loop.start(command_line_args.host, command_line_args.port, analysis_server_chan)
 
-        logging.info("Establishing connection to controller: {}", command_line_args.device)
+        logging.info("Establishing connection to controller: %s", command_line_args.device)
         controller = analysis_loop.connect(command_line_args.device, command_line_args.baud)
 
         # starts the main loop (pass in the process_pool)

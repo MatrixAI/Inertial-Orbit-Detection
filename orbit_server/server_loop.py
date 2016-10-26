@@ -109,7 +109,7 @@ class RotationTCPHandler(socketserver.BaseRequestHandler):
 
     def handle(self):
         
-        logging.info("Responding to new client: {}", self.request.getpeername())
+        logging.info("Responding to new client: %s", self.request.getpeername())
 
         # this just means settimeout(0.0)
         # this is not the same as OS non-blocking socket, but achieves the same thing
@@ -145,7 +145,7 @@ class RotationTCPHandler(socketserver.BaseRequestHandler):
                 # no data arrived, only check if the ping pong protocol timed out
                 # otherwise continue to the next step
                 if int(time.time()) >= ping_pong_time + ping_pong_timeout:
-                    logging.info("Client timed out: {}", self.request.getpeername())
+                    logging.info("Client timed out: %s", self.request.getpeername())
                     break 
                 else:
                     client_data = None
@@ -208,13 +208,13 @@ class RotationTCPHandler(socketserver.BaseRequestHandler):
                 else:
 
                     # this means we received EOF character from the client
-                    logging.info("Client closed connection: {}", self.request.getpeername())
+                    logging.info("Client closed connection: %s", self.request.getpeername())
                     break
 
             time.sleep(0)
       
         # event loop for the connection was broken, so here we just clean up the connection and pinging action 
-        logging.info("Closing connection to: {}", self.request.getpeername()) 
+        logging.info("Closing connection to: %s", self.request.getpeername()) 
 
         pinging_action.cancel()
         self.graceful_close()
