@@ -68,7 +68,7 @@ def normalise_signals(data_window, time_delta_s, orientation, sensor_type):
     # we will convert the milliseconds into just seconds
     # for the purposes of orbit, we only care about 2D orbit, so we drop the north axis
     norm_data_window = {
-        "time":  None
+        "time":  None,
         "east":  None,
         "up":    None
     }
@@ -151,7 +151,7 @@ def parabolic(f, x):
     yv = f[x] - 1/4. * (f[x-1] - f[x+1]) * (xv - x)
     return (xv, yv)
 
-def fit_sine_waves(norm_data_window, frequencies)
+def fit_sine_waves(norm_data_window, frequencies):
 
     # fix the sine function with the inferred frequency (scipy doesn't like partial functions)
     sine_with_freq_east  = lambda t, a, b, c: sine(frequencies["east"],  t, a, b, c)

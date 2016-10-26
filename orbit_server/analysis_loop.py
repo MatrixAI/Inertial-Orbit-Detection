@@ -3,6 +3,7 @@ import serial
 import window_processing
 import time
 import logging
+import re
 
 controller_message_regex = re.compile('^Time.(\d+).X.(\d+).Y.(\d+).Z.(\d+)', re.I)
 

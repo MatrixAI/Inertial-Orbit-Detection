@@ -37,7 +37,7 @@ class RotationTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
         self, 
         server_address, 
         RequestHandlerClass, 
-        channel
+        channel,
         bind_and_activate=True,
     ):
 

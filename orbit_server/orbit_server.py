@@ -25,7 +25,7 @@ def cleanup_and_exit(pool, device, server, code):
         server.server_close()
     sys.exit(code)
 
-def main:
+def main():
 
     command_line_parser = argparse.ArgumentParser()
     command_line_parser.add_argument("device", type=str, help="Path to Orbit Controller Serial Device")
@@ -36,7 +36,7 @@ def main:
         "-s", 
         "--sensor-type",
         type=str,
-        choices=[k for k in accelerometers.accel_sensors]
+        choices=[k for k in accelerometers.accel_sensors],
         help="Accelerometer Sensor Type",
         default="am3x-1.5g"
     )
@@ -96,7 +96,7 @@ def main:
         "--verbose",
         help="Log Verbose Messages",
         action="store_const",
-        dest="loglevel"
+        dest="loglevel",
         const=logging.INFO
     )
     command_line_args = command_line_parser.parse_args()
@@ -135,7 +135,7 @@ def main:
     # if we need to graph, we'll setup the graph
     if command_line_args.graph:
         graph = graphing.setup(
-            -(accelerometers.accel_sensors[command_line_args.sensor_type]["accel_max"] / 2)
+            -(accelerometers.accel_sensors[command_line_args.sensor_type]["accel_max"] / 2),
             accelerometers.accel_sensors[command_line_args.sensor_type]["accel_max"] / 2
         )
     else:
