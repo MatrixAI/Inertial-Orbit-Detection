@@ -54,27 +54,11 @@ def display(graph, norm_data_window, frequencies, wave_properties, time_delta_s)
 
     # graph rendering is a matter of plotting coordinates and then "connecting the dots"
     # this means a straight line is drawn from each coordinate to the next coordinate
+    # if you have irregularly spaced intervals and large intervals, the graph may not look nice
+    # although our time recordings are irregularly spaced, they are fairly consistent and 
+    # are quite small, so we won't need to correct it by linearly spacing it
 
-    # our current time recordings are not regularly spaced, to make the graph look nicer 
-    # we'll just construct a regularly spaced time values to be the x-axis for the sine curve
-
-    # when we plot the normalised acceleration values, we'll use the raw irregularly-spaced time values
-    # when we plot the fitted sine curve, we'll use the corrected regularly-spaced time values
-    # this does mean the fitted sine curve may be slightly longer or shorter in length compared to the 
-    # scatter plot for the normalised acceleration values
-
-    # the endpoint is false in order to recreate a half-open interval
-    # num is the number of time values to generate in addition to the start value
-    # so a half open interval will discount the number by 1
-    # thus giving us exactly num number of time values 
-    regular_time_values_s = np.linspace(
-        start    = norm_data_window['time'][0],
-        stop     = norm_data_window['time'][0] + len(norm_data_window['time']) * time_delta_s,
-        num      = len(norm_data_window['time']),
-        endpoint = False
-    )
-
-    graph["east"]["curve"][0].set_xdata(regular_time_values_s)
+    graph["east"]["curve"][0].set_xdata(norm_data_window['time'])
     graph["east"]["curve"][0].set_ydata( 
         sine(
             frequencies["east"], 
@@ -85,7 +69,7 @@ def display(graph, norm_data_window, frequencies, wave_properties, time_delta_s)
         )
     )
 
-    graph["up"]["curve"][0].set_xdata(regular_time_values_s)
+    graph["up"]["curve"][0].set_xdata(norm_data_window['time'])
     graph["up"]["curve"][0].set_ydata( 
         sine(
             frequencies["up"], 

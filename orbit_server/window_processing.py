@@ -84,6 +84,14 @@ def normalise_signals(data_window, time_delta_s, orientation, sensor_type):
         else:
             data_window[k] = accelerometers.accel_sensors[sensor_type]["accel_convert_map_np"](np.array(vs))
 
+    time_values_s = data_window["t"] / 1000
+    regular_time_values_s = np.linspace(
+        start    = time_values_s[0],
+        stop     = time_values_s[0] + len(time_values_s) * time_delta_s,
+        num      = len(time_values_s),
+        endpoint = False
+    )
+
     # time in norm_data_window will be in seconds, not milliseconds
     # for the purposes of orbit, we only care about 2D orbit, so we drop the north axis
     norm_data_window = {
@@ -92,7 +100,7 @@ def normalise_signals(data_window, time_delta_s, orientation, sensor_type):
         "up":    None
     }
 
-    norm_data_window["time"]  = data_window["t"] / 1000
+    norm_data_window["time"]  = regular_time_values_s
 
     for axis in ["east", "up"]:
 
@@ -104,6 +112,17 @@ def normalise_signals(data_window, time_delta_s, orientation, sensor_type):
 
         # flip values according to the given signs
         if orientation[axis]["sign"] == '-': norm_data_window[axis] *= -1
+
+        # use linear interpolation and allow a bit of extrapolation 
+        # this is because the corrected time could be a bit larger than the sampled time
+        interpolated_f = interp1d(
+            time_values_s, 
+            norm_data_window[axis], 
+            bounds_error=False,
+            fill_value="extrapolate"
+        )
+
+        norm_data_window[axis] = interpolated_f(regular_time_values_s)
 
     return norm_data_window
 
