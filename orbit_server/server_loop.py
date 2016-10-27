@@ -1,5 +1,6 @@
 import socketserver
 import socket
+import errno
 import threading
 import queue
 import select
@@ -85,11 +86,6 @@ class RotationTCPHandler(socketserver.BaseRequestHandler):
         super().__init__(request, client_address, server)
         # socketserver.BaseRequestHandler.__init__(self, request, client_address, server)
 
-    def graceful_close(self):
-
-        self.request.shutdown(socket.SHUT_RDWR)
-        self.request.close()
-
     def server_ping(self, interval, fail_event):
 
         ping_action = None
@@ -152,8 +148,21 @@ class RotationTCPHandler(socketserver.BaseRequestHandler):
             # socket.error is more general than socket.timeout, it must be caught later
             except socket.error as e:
 
-                logging.exception("Error in reading from  connection: %s", self.request.getpeername())
-                break 
+                # this is the exception that is raised when no data is received, not socket.timeout
+                if e.args[0] == errno.EWOULDBLOCK:
+
+                    # no data arrived, only check if the ping pong protocol timed out
+                    # otherwise continue to the next step
+                    if int(time.time()) >= ping_pong_time + ping_pong_timeout:
+                        logging.info("Client timed out: %s", self.request.getpeername())
+                        break 
+                    else:
+                        client_data = None
+
+                else:
+
+                    logging.exception("Error in reading from connection: %s", self.request.getpeername())
+                    break 
 
             # poll the channel
             try:
@@ -217,7 +226,7 @@ class RotationTCPHandler(socketserver.BaseRequestHandler):
         logging.info("Closing connection to: %s", self.request.getpeername()) 
 
         ping_action.cancel()
-        self.graceful_close()
+        self.request.close()
 
 def start(host, port, channel):
     
