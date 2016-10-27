@@ -5,6 +5,7 @@ import time
 import logging
 import re
 import functools
+import pprint
 
 controller_message_regex = re.compile('^Time.(\d+).X.(\d+).Y.(\d+).Z.(\d+)', re.I)
 
@@ -143,6 +144,11 @@ def run(
     filled_rolling_window = False
     shift_rolling_window = False
 
+    # we'll use this to trace through the concurrent environment
+    # this should only be incremented upon passing a data window 
+    # to the window processing code
+    trace_id = 0
+
     # fix some of the static parameters of asynchronous processing and callback
     analyse_rotation_process = functools.partial(
         window_processing.analyse_rotation_process, 
@@ -205,7 +211,7 @@ def run(
             rolling_window_interval_end = rolling_window_interval["t"][-1]
 
             logging.info(
-                "Rolling the Data Window with Interval at: %d - %d", 
+                "%d - Rolling the Data Window with Interval at: %d - %d", 
                 rolling_window_interval_start, 
                 rolling_window_interval_end
             )
@@ -241,16 +247,20 @@ def run(
             # we only want to process filled rolling windows, not the initial partially filled window
             if filled_rolling_window:
 
-                logging.info("Processing Data Window at: %d - %d", rolling_window_start, rolling_window_end)
+                logging.info("%d - Processing Data Window at: %d - %d", trace_id, rolling_window_start, rolling_window_end)
+
+                logging.debug("%d - Data Window: \n%s", trace_id, pprint.pformat(rolling_window))
                 
                 # the analysis will be executed in a child-process
                 # the callback will be executed in another thread of this main-process
                 # therefore, it won't be blocked this event loop
                 process_pool.apply_async(
                     analyse_rotation_process, 
-                    args=(deepcopy(rolling_window),), 
+                    args=(deepcopy(rolling_window), trace_id), 
                     callback=analyse_rotation_process_callback
                 )
+
+                trace_id++
 
             # start a new rolling_window_interval with the most recently acquired sample
             # this is because the rolling_window_interval was completed now and 

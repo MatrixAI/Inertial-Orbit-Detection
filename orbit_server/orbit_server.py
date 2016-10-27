@@ -99,6 +99,14 @@ def main():
         dest="loglevel",
         const=logging.INFO
     )
+    command_line_parser.add_argument(
+        "-d",
+        "--debug",
+        help="Log Debug Messages",
+        action="store_const",
+        dest="loglevel",
+        const=logging.DEBUG
+    )
     command_line_args = command_line_parser.parse_args()
 
     # process the command line parameters

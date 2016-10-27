@@ -10,44 +10,59 @@ import rotation_mapping
 import graphing
 import numpy as np
 import logging
+import pprint
 
-def analyse_rotation_process(time_delta_ms, orientation, sensor_type, data_window):
+def analyse_rotation_process(time_delta_ms, orientation, sensor_type, data_window, trace_id):
 
-    logging.info("Starting Window Processing Child Process %d", os.getpid())
+    logging.info("%d - Starting Window Processing at PID: %d", trace_id, os.getpid())
         
     # these will be used for sampling interpolation, frequency estimation, and sine wave regression
     time_delta_s = time_delta_ms / 1000
     sampling_rate = 1000 / time_delta_ms
+
+    logging.debug("%d - Time Delta Seconds: \n%s", trace_id, pprint.pformat(time_delta_s))
+    logging.debug("%d - Sampling Rate: \n%s", trace_id, pprint.pformat(sampling_rate))
     
     # normalise the raw acceleration data to linearly spaced & interpolated data with the given orientation
     norm_data_window = normalise_signals(data_window, time_delta_s, orientation, sensor_type)
+
+    logging.debug("%d - Normalised Data Window: \n%s", trace_id, pprint.pformat(norm_data_window))
+
     # frequency needs to be estimated before curve fitting
     frequencies = estimate_frequency(norm_data_window, sampling_rate)
+
+    logging.debug("%d - Frequencies: \n%s", trace_id, pprint.pformat(frequencies))
+
     # non-linear curve fit of a sine curve
     wave_properties = fit_sine_waves(norm_data_window, frequencies)
+
+    logging.debug("%d - Wave Properties: \n%s", trace_id, pprint.pformat(wave_properties))
+
     # use the acceleration and jerk to vote on the rotational direction
     rotation_direction = estimate_rotation_direction(norm_data_window, frequencies, wave_properties)
 
-    return (norm_data_window, frequencies, wave_properties, rotation_direction)
+    logging.debug("%d - Rotation Direction: \n%s", trace_id, pprint.pformat(rotation_direction))
+
+    return (norm_data_window, frequencies, wave_properties, rotation_direction, trace_id)
 
 def analyse_rotation_process_callback(channel, graph, package):
 
-    (norm_data_window, frequencies, wave_properties, rotation_direction) = package
+    (norm_data_window, frequencies, wave_properties, rotation_direction, trace_id) = package
 
     if rotation_direction == 1:
-        logging.info("Clockwise Direction")
+        print("%d - Clockwise Direction" % trace_id)
     elif rotation_direction == -1:
-        logging.info("Anticlockwise Direction")
+        print("%d - Anticlockwise Direction" % trace_id)
     else:
-        logging.info("Unknown Direction")
+        print("%d - Unknown Direction" % trace_id)
 
     rps = (frequencies["east"] + frequencies["up"]) / 2
 
-    logging.info("RPS East: %d", frequencies["east"])
-    logging.info("RPS Up: %d", frequencies["up"])
-    logging.info("RPS Average: %d", rps)
+    print("%d - RPS East: %d" % (trace_id, frequencies["east"]))
+    print("%d - RPS Up: %d" % (trace_id, frequencies["up"]))
+    print("%d - RPS Average: %d" % (trace_id, rps))
 
-    channel.put((rps, rotation_direction))
+    channel.put((rps, rotation_direction, trace_id))
 
     if graph:
         graphing.display(graph, norm_data_window, frequencies, wave_properties)

@@ -132,7 +132,7 @@ class RotationTCPHandler(socketserver.BaseRequestHandler):
             
             # poll for the pinging action failure
             if (ping_pong_failure.is_set()): 
-                logging.exception("Error pinging client: {}", self.request.getpeername())
+                logging.exception("Error pinging client: %s", self.request.getpeername())
                 break
 
             # poll the client
@@ -153,7 +153,7 @@ class RotationTCPHandler(socketserver.BaseRequestHandler):
             # socket.error is more general than socket.timeout, it must be caught later
             except socket.error as e:
 
-                logging.exception("Error in reading from  connection: {}", self.request.getpeername())
+                logging.exception("Error in reading from  connection: %s", self.request.getpeername())
                 break 
 
             # poll the channel
@@ -167,11 +167,12 @@ class RotationTCPHandler(socketserver.BaseRequestHandler):
 
                 # signal upstream that we have the message!
                 self.channel.task_done()
-                (rps, rotation_direction) = server_data
+                (rps, rotation_direction, trace_id) = server_data
                 try:
+                    logging.info("%d - Wrote RPS and RPS Direction to connection %s", trace_id, self.request.getpeername())
                     self.request.sendall(bytes("S{0}:{1}E".format(rps, rotation_direction), 'ascii'))
                 except socket.error as e:
-                    logging.exception("Error writing to connection: {}", self.request.getpeername())
+                    logging.exception("%d - Error writing to connection: %s", trace_id, self.request.getpeername())
                     break
 
             # handle the client_data
@@ -197,7 +198,7 @@ class RotationTCPHandler(socketserver.BaseRequestHandler):
                             try: 
                                 self.request.sendall(b"SPONGE")
                             except: 
-                                logging.exception("Error writing to connection: {}", self.request.getpeername())
+                                logging.exception("Error writing to connection: %s", self.request.getpeername())
                                 break
 
                         elif token == "PONG":
