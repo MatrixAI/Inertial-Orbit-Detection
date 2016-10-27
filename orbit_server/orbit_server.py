@@ -16,7 +16,7 @@ def cleanup_and_exit(pool, device, server, code):
     print("Closing Orbit Detection Process Pool and TCP Server!")
     if pool:
         pool.close()
-    if device:
+    if device and device.is_open:
         device.write_timeout = 0
         device.write(b"0")
         device.close()

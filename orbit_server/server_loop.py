@@ -11,15 +11,15 @@ import logging
 class TimerForever():
 
     def __init__(self, interval, callback, args=[], kwargs={}):
-        self.intervalTime = intervalTime
+        self.interval = interval
         self.callback = callback 
         self.args = args
         self.kwargs = kwargs
-        self.thread = thread.Timer(self.intervalTime, self.call_callback)
+        self.thread = thread.Timer(self.interval, self.call_callback)
 
     def call_callback(self):
         self.callback(*self.args, **self.kwargs)
-        self.thread = thread.Timer(self.intervalTime, self.call_callback)
+        self.thread = thread.Timer(self.interval, self.call_callback)
         self.thread.start()
 
     def start(self):
