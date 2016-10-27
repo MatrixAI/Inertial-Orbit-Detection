@@ -249,8 +249,6 @@ def run(
             if filled_rolling_window:
 
                 logging.info("%d - Processing Data Window at: %d - %d", trace_id, rolling_window_start, rolling_window_end)
-
-                logging.debug("%d - Data Window: \n%s", trace_id, pprint.pformat(rolling_window))
                 
                 # the analysis will be executed in a child-process
                 # the callback will be executed in another thread of this main-process

@@ -15,7 +15,9 @@ import pprint
 def analyse_rotation_process(time_delta_ms, orientation, sensor_type, data_window, trace_id):
 
     logging.info("%d - Starting Window Processing at PID: %d", trace_id, os.getpid())
-        
+
+    logging.debug("%d - Data Window: \n%s", trace_id, str(data_window))
+
     # these will be used for sampling interpolation, frequency estimation, and sine wave regression
     time_delta_s = time_delta_ms / 1000
     sampling_rate = 1000 / time_delta_ms
@@ -43,11 +45,11 @@ def analyse_rotation_process(time_delta_ms, orientation, sensor_type, data_windo
 
     logging.debug("%d - Rotation Direction: \n%s", trace_id, pprint.pformat(rotation_direction))
 
-    return (norm_data_window, frequencies, wave_properties, rotation_direction, trace_id)
+    return (norm_data_window, frequencies, wave_properties, rotation_direction, time_delta_s, trace_id)
 
-def analyse_rotation_process_callback(channel, graph, package):
+def analyse_rotation_process_callback(channel, graph, processed_package):
 
-    (norm_data_window, frequencies, wave_properties, rotation_direction, trace_id) = package
+    (norm_data_window, frequencies, wave_properties, rotation_direction, time_delta_s, trace_id) = processed_package
 
     if rotation_direction == 1:
         print("%d - Clockwise Direction" % trace_id)
@@ -65,14 +67,25 @@ def analyse_rotation_process_callback(channel, graph, package):
     channel.put((rps, rotation_direction, trace_id))
 
     if graph:
-        graphing.display(graph, norm_data_window, frequencies, wave_properties)
+        graphing.display(graph, norm_data_window, frequencies, wave_properties, time_delta_s)
 
     # block until all tasks in the channel is processed with channel.task_done()
     channel.join()
 
 def normalise_signals(data_window, time_delta_s, orientation, sensor_type):
 
-    # we will convert the milliseconds into just seconds
+    # we now have a set of acceleration samples, but they are irregularly 
+    # time-spaced becausethe game controller is a soft realtime system
+    # however this won't matter unless we perform graph rendering
+
+    # convert to np arrays and convert acceleration units to acceleration m/s^2
+    for k, vs in data_window.items():
+        if k == 't':
+            data_window[k] = np.array(vs)
+        else:
+            data_window[k] = accelerometers.accel_sensors[sensor_type]["accel_convert_map_np"](np.array(vs))
+
+    # time in norm_data_window will be in seconds, not milliseconds
     # for the purposes of orbit, we only care about 2D orbit, so we drop the north axis
     norm_data_window = {
         "time":  None,
@@ -80,32 +93,7 @@ def normalise_signals(data_window, time_delta_s, orientation, sensor_type):
         "up":    None
     }
 
-    # convert to np arrays and convert acceleration units to acceleration m/s^2
-    for k, vs in data_window.items():
-        if k == 't':
-            data_window[k] = np.array(vs)
-        else:
-            data_window[k] = accelerometers.accel_sensors[sensor_type]["accel_convert_map_np"](np.array(vs))            
-
-    # we now have a set of acceleration samples, but they are irregularly time-spaced because 
-    # the game controller may be a soft realtime system
-    # in order to normalise into regularly time-spaced samples, we need to use interpolation
-    # on the acceleration data, and acquire the new interpolated samples from a corrected time set
-
-    time_values_s = data_window["t"] / 1000
-
-    # the endpoint is false in order to recreate a half-open interval
-    # num is the number of time values to generate in addition to the start value
-    # so a half open interval will discount the number by 1
-    # thus giving us exactly num number of time values    
-    corrected_time_values_s = np.linspace(
-        start    = time_values_s[0],
-        stop     = time_values_s[0] + len(time_values_s) * time_delta_s,
-        num      = len(time_values_s),
-        endpoint = False
-    )
-
-    norm_data_window['time']  = corrected_time_values_s
+    norm_data_window["time"]  = data_window["t"] / 1000
 
     for axis in ["east", "up"]:
 
@@ -117,17 +105,6 @@ def normalise_signals(data_window, time_delta_s, orientation, sensor_type):
 
         # flip values according to the given signs
         if orientation[axis]["sign"] == '-': norm_data_window[axis] *= -1
-        
-        # use linear interpolation and allow a bit of extrapolation 
-        # this is because the corrected time could be a bit larger than the sampled time
-        interpolated_f = interp1d(
-            norm_data_window[axis], 
-            time_values_s, 
-            bounds_error=False,
-            fill_value="extrapolate"
-        )
-
-        norm_data_window[axis]  = interpolated_f(corrected_time_values_s)
 
     return norm_data_window
 
