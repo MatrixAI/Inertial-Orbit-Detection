@@ -216,7 +216,7 @@ class RotationTCPHandler(socketserver.BaseRequestHandler):
         # event loop for the connection was broken, so here we just clean up the connection and pinging action 
         logging.info("Closing connection to: %s", self.request.getpeername()) 
 
-        pinging_action.cancel()
+        ping_action.cancel()
         self.graceful_close()
 
 def start(host, port, channel):
