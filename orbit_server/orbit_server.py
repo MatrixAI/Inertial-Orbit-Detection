@@ -6,7 +6,7 @@ import signal as unix_signal
 import server_loop
 import analysis_loop
 import multiprocessing
-import queue
+import collections
 import graphing
 import logging
 
@@ -138,7 +138,7 @@ def main():
     controller = None
     server = None
     # queue size of 1
-    analysis_server_chan = queue.Queue(1)
+    analysis_server_chan = collections.deque(maxlen=1)
 
     # if we need to graph, we'll setup the graph
     if command_line_args.graph:

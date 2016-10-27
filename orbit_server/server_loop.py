@@ -158,15 +158,13 @@ class RotationTCPHandler(socketserver.BaseRequestHandler):
 
             # poll the channel
             try:
-                server_data = self.channel.get_nowait()
-            except queue.Empty:
+                server_data = self.channel.pop()
+            except IndexError:
                 server_data = None
 
             # handle the server_data
             if server_data is not None:
 
-                # signal upstream that we have the message!
-                self.channel.task_done()
                 (rps, rotation_direction, trace_id) = server_data
                 try:
                     logging.info("%d - Wrote RPS and RPS Direction to connection %s", trace_id, self.request.getpeername())

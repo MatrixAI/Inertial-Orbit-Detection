@@ -64,13 +64,12 @@ def analyse_rotation_process_callback(channel, graph, processed_package):
     print("%d - RPS Up: %d" % (trace_id, frequencies["up"]))
     print("%d - RPS Average: %d" % (trace_id, rps))
 
-    channel.put((rps, rotation_direction, trace_id))
+    # non-blocking push into the channel
+    # it will overwrite any old data if they haven't been collected
+    channel.append((rps, rotational_direction, trace_id))
 
     if graph:
         graphing.display(graph, norm_data_window, frequencies, wave_properties, time_delta_s)
-
-    # block until all tasks in the channel is processed with channel.task_done()
-    channel.join()
 
 def normalise_signals(data_window, time_delta_s, orientation, sensor_type):
 
