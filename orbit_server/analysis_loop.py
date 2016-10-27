@@ -4,6 +4,7 @@ import window_processing
 import time
 import logging
 import re
+import functools
 
 controller_message_regex = re.compile('^Time.(\d+).X.(\d+).Y.(\d+).Z.(\d+)', re.I)
 
@@ -142,6 +143,19 @@ def run(
     filled_rolling_window = False
     shift_rolling_window = False
 
+    # fix some of the static parameters of asynchronous processing and callback
+    analyse_rotation_process = functools.partial(
+        window_processing.analyse_rotation_process, 
+        time_delta_ms, 
+        orientation, 
+        sensor_type
+    )
+    analyse_rotation_process_callback = functools.partial(
+        window_processing.analyse_rotation_process_callback, 
+        channel, 
+        graph
+    )
+
     # tell the controller to start sending data
     controller.write(b'1')
 
@@ -233,9 +247,9 @@ def run(
                 # the callback will be executed in another thread of this main-process
                 # therefore, it won't be blocked this event loop
                 process_pool.apply_async(
-                    window_processing.create_analyse_rotation_process(time_delta_ms, orientation, sensor_type), 
+                    analyse_rotation_process, 
                     args=(deepcopy(rolling_window),), 
-                    callback=window_processing.create_analyse_rotation_process_callback(channel, graph)
+                    callback=analyse_rotation_process_callback
                 )
 
             # start a new rolling_window_interval with the most recently acquired sample

@@ -11,56 +11,49 @@ import graphing
 import numpy as np
 import logging
 
-def create_analyse_rotation_process(time_delta_ms, orientation, sensor_type):
-    
+def analyse_rotation_process(time_delta_ms, orientation, sensor_type, data_window):
+
+    logging.info("Starting Window Processing Child Process %d", os.getpid())
+        
     # these will be used for sampling interpolation, frequency estimation, and sine wave regression
     time_delta_s = time_delta_ms / 1000
     sampling_rate = 1000 / time_delta_ms
+    
+    # normalise the raw acceleration data to linearly spaced & interpolated data with the given orientation
+    norm_data_window = normalise_signals(data_window, time_delta_s, orientation, sensor_type)
+    # frequency needs to be estimated before curve fitting
+    frequencies = estimate_frequency(norm_data_window, sampling_rate)
+    # non-linear curve fit of a sine curve
+    wave_properties = fit_sine_waves(norm_data_window, frequencies)
+    # use the acceleration and jerk to vote on the rotational direction
+    rotation_direction = estimate_rotation_direction(norm_data_window, frequencies, wave_properties)
 
-    def analyse_rotation_process(data_window):
-        logging.info("Starting Window Processing Child Process %d", os.getpid())
-        
-        # normalise the raw acceleration data to linearly spaced & interpolated data with the given orientation
-        norm_data_window = normalise_signals(data_window, time_delta_s, orientation, sensor_type)
-        # frequency needs to be estimated before curve fitting
-        frequencies = estimate_frequency(norm_data_window, sampling_rate)
-        # non-linear curve fit of a sine curve
-        wave_properties = fit_sine_waves(norm_data_window, frequencies)
-        # use the acceleration and jerk to vote on the rotational direction
-        rotation_direction = estimate_rotation_direction(norm_data_window, frequencies, wave_properties)
+    return (norm_data_window, frequencies, wave_properties, rotation_direction)
 
-        return (norm_data_window, frequencies, wave_properties, rotation_direction)
+def analyse_rotation_process_callback(channel, graph, package):
 
-    return analyse_rotation_process
+    (norm_data_window, frequencies, wave_properties, rotation_direction) = package
 
-def create_analyse_rotation_process_callback(channel, graph):
+    if rotation_direction == 1:
+        logging.info("Clockwise Direction")
+    elif rotation_direction == -1:
+        logging.info("Anticlockwise Direction")
+    else:
+        logging.info("Unknown Direction")
 
-    def analyse_rotation_process_callback(package):
+    rps = (frequencies["east"] + frequencies["up"]) / 2
 
-        (norm_data_window, frequencies, wave_properties, rotation_direction) = package
+    logging.info("RPS East: %d", frequencies["east"])
+    logging.info("RPS Up: %d", frequencies["up"])
+    logging.info("RPS Average: %d", rps)
 
-        if rotation_direction == 1:
-            logging.info("Clockwise Direction")
-        elif rotation_direction == -1:
-            logging.info("Anticlockwise Direction")
-        else:
-            logging.info("Unknown Direction")
+    channel.put((rps, rotation_direction))
 
-        rps = (frequencies["east"] + frequencies["up"]) / 2
+    if graph:
+        graphing.display(graph, norm_data_window, frequencies, wave_properties)
 
-        logging.info("RPS East: %d", frequencies["east"])
-        logging.info("RPS Up: %d", frequencies["up"])
-        logging.info("RPS Average: %d", rps)
-
-        channel.put((rps, rotation_direction))
-
-        if graph:
-            graphing.display(graph, norm_data_window, frequencies, wave_properties)
-
-        # block until all tasks in the channel is processed with channel.task_done()
-        channel.join()
-
-    return analyse_rotation_process_callback
+    # block until all tasks in the channel is processed with channel.task_done()
+    channel.join()
 
 def normalise_signals(data_window, time_delta_s, orientation, sensor_type):
 

@@ -165,6 +165,8 @@ class RotationTCPHandler(socketserver.BaseRequestHandler):
             # handle the server_data
             if server_data is not None:
 
+                # signal upstream that we have the message!
+                self.channel.task_done()
                 (rps, rotation_direction) = server_data
                 try:
                     self.request.sendall(bytes("S{0}:{1}E".format(rps, rotation_direction), 'ascii'))
