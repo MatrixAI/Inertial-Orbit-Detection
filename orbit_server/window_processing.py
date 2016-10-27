@@ -73,10 +73,6 @@ def analyse_rotation_process_callback(channel, graph, processed_package):
 
 def normalise_signals(data_window, time_delta_s, orientation, sensor_type):
 
-    # we now have a set of acceleration samples, but they are irregularly 
-    # time-spaced becausethe game controller is a soft realtime system
-    # however this won't matter unless we perform graph rendering
-
     # convert to np arrays and convert acceleration units to acceleration m/s^2
     for k, vs in data_window.items():
         if k == 't':
@@ -84,7 +80,20 @@ def normalise_signals(data_window, time_delta_s, orientation, sensor_type):
         else:
             data_window[k] = accelerometers.accel_sensors[sensor_type]["accel_convert_map_np"](np.array(vs))
 
+    # we now have a set of acceleration samples, but they are irregularly 
+    # time-spaced because the game controller is a soft realtime system
+    # we will regularise the samples by first constructing a linear spaced 
+    # set of time, that has the same length as the amount of data but uses 
+    # the the desired time delta_s, then since the time samples have 
+    # changed, we need to accordingly change the acceleration values via 
+    # interpolation
+
     time_values_s = data_window["t"] / 1000
+
+    # the endpoint is false in order to recreate a half-open interval
+    # num is the number of time values to generate in addition to the start value
+    # so a half open interval will discount the number by 1
+    # thus giving us exactly num number of time values 
     regular_time_values_s = np.linspace(
         start    = time_values_s[0],
         stop     = time_values_s[0] + len(time_values_s) * time_delta_s,
@@ -114,7 +123,7 @@ def normalise_signals(data_window, time_delta_s, orientation, sensor_type):
         if orientation[axis]["sign"] == '-': norm_data_window[axis] *= -1
 
         # use linear interpolation and allow a bit of extrapolation 
-        # this is because the corrected time could be a bit larger than the sampled time
+        # extrapolation is because the corrected time could be a bit larger than the sampled time
         interpolated_f = interp1d(
             time_values_s, 
             norm_data_window[axis], 

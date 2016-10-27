@@ -69,7 +69,7 @@ def main():
         "--time-window", 
         type=int, 
         help="Rolling Time Window Size in Milliseconds (default is 3000ms)",
-        default=3000
+        default=4000
     )
     command_line_parser.add_argument(
         "-ti", 
@@ -83,7 +83,7 @@ def main():
         "--time-delta", 
         type=int, 
         help="Sampling Period in Milliseconds (default is 30ms)",
-        default=30
+        default=40
     )
     command_line_parser.add_argument(
         "-g",

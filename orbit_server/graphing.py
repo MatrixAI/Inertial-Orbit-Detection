@@ -55,8 +55,7 @@ def display(graph, norm_data_window, frequencies, wave_properties, time_delta_s)
     # graph rendering is a matter of plotting coordinates and then "connecting the dots"
     # this means a straight line is drawn from each coordinate to the next coordinate
     # if you have irregularly spaced intervals and large intervals, the graph may not look nice
-    # although our time recordings are irregularly spaced, they are fairly consistent and 
-    # are quite small, so we won't need to correct it by linearly spacing it
+    # however our time values have been corrected to be regularly spaced, so it's all good!
 
     graph["east"]["curve"][0].set_xdata(norm_data_window['time'])
     graph["east"]["curve"][0].set_ydata( 

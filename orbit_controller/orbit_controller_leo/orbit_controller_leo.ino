@@ -1,4 +1,4 @@
-#define MESSAGE_DELAY 30
+#define MESSAGE_DELAY 40
 #define READY_DELAY 1000
 
 Stream * port;
