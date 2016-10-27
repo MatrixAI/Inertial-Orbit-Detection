@@ -146,7 +146,7 @@ void runPlaying() {
 
     // repaint each wall
     for (Wall wall : this.walls) {
-        imageMode(CORNER)
+        imageMode(CORNER);
         image(wall.layer, wall.position, 0);
     }
 
