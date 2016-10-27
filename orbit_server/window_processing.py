@@ -66,7 +66,7 @@ def analyse_rotation_process_callback(channel, graph, processed_package):
 
     # non-blocking push into the channel
     # it will overwrite any old data if they haven't been collected
-    channel.append((rps, rotational_direction, trace_id))
+    channel.append((rps, rotation_direction, trace_id))
 
     if graph:
         graphing.display(graph, norm_data_window, frequencies, wave_properties, time_delta_s)
