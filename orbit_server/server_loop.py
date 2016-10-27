@@ -19,14 +19,14 @@ class TimerForever():
     def call_callback(self):
         self.callback(*self.args, **self.kwargs)
         self.thread = threading.Timer(self.interval, self.call_callback)
-        self.threading.start()
+        self.thread.start()
 
     def start(self):
-        self.threading.start()
+        self.thread.start()
 
     def cancel(self):
-        if self.threading.is_alive():
-            self.threading.cancel()
+        if self.thread.is_alive():
+            self.thread.cancel()
 
 
 class RotationTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
