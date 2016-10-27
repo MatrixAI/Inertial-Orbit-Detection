@@ -223,3 +223,5 @@ def estimate_rotation_direction(norm_data_window, frequencies, wave_properties):
 
     # most common direction (vote on the majority inferred rotational direction)
     rotational_direction = mode(rotational_directions)[0][0]
+
+    return rotational_direction
