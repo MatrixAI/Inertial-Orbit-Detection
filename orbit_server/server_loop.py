@@ -7,7 +7,6 @@ import time
 import re
 import logging
 
-
 class TimerForever():
 
     def __init__(self, interval, callback, args=[], kwargs={}):
@@ -15,19 +14,19 @@ class TimerForever():
         self.callback = callback 
         self.args = args
         self.kwargs = kwargs
-        self.thread = thread.Timer(self.interval, self.call_callback)
+        self.thread = threading.Timer(self.interval, self.call_callback)
 
     def call_callback(self):
         self.callback(*self.args, **self.kwargs)
-        self.thread = thread.Timer(self.interval, self.call_callback)
-        self.thread.start()
+        self.thread = threading.Timer(self.interval, self.call_callback)
+        self.threading.start()
 
     def start(self):
-        self.thread.start()
+        self.threading.start()
 
     def cancel(self):
-        if self.thread.is_alive():
-            self.thread.cancel()
+        if self.threading.is_alive():
+            self.threading.cancel()
 
 
 class RotationTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
