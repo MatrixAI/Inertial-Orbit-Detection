@@ -260,7 +260,7 @@ def run(
                     callback=analyse_rotation_process_callback
                 )
 
-                trace_id++
+                trace_id = trace_id + 1
 
             # start a new rolling_window_interval with the most recently acquired sample
             # this is because the rolling_window_interval was completed now and 
