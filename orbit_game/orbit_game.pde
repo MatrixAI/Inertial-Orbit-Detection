@@ -100,12 +100,15 @@ void setup() {
         // overrided exit is only available at setup and beyond
         println("Server Address and Server Port is Needed");
         exit();
+        // exit doesn't return immediately, but by returning here, it will return immediately
+        return;
     }
 
     this.client = this.clientEstablish(this.serverAddress, this.serverPort);
     if (this.client == null) {
         println("Game Client Couldn't Connect");
         exit();
+        return;
     }
 
     // initialise both ping pong send and receive time to the current time
@@ -155,7 +158,7 @@ void draw() {
     ClientData clientData = this.clientRead(this.client, this.messageProtocol, this.rpsAndDirTokenRegex);
 
     if (clientData != null) {
-        if (clientData.rps != null and clientData.direction != null) {
+        if (clientData.rps != null && clientData.direction != null) {
             this.rotationRps         = clientData.rps;
             this.rotationDirection   = clientData.direction; 
         }

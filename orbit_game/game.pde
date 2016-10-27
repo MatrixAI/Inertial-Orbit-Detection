@@ -36,13 +36,12 @@ class Wall {
  */
 void keyPressed() { 
 
-    switch (this.game.getCurrentState()) {
-        case this.gameStart:
-            this.game.transitionTo(this.gamePlaying);
-        break;
-        case this.gameOver:
-            this.game.transitionTo(this.gameStart);
-        break; 
+    State currentState = this.game.getCurrentState();
+
+    if (currentState == this.gameStart) {
+        this.game.transitionTo(this.gamePlaying);
+    } else if (currentState == this.gameOver) {
+        this.game.transitionTo(this.gameStart);
     }
 
 }
@@ -114,8 +113,8 @@ void runPlaying() {
     // get the final velocity after acceleration
     float hotBalloonVertVelocityFinal = this.accelerateHotBalloonVert(
         this.hotBalloonVertVelocity,
-        this.rotationalRps,
-        this.rotationalDirection, 
+        this.rotationRps,
+        this.rotationDirection, 
         timeIntervalFor1Frame 
     );
 
@@ -185,7 +184,7 @@ void enterOver() {
     // this screen changes each time, so its not kept statically
     PGraphics overScreen = this.createOverScreen(this.gameWidth, this.gameHeight, this.score);
     imageMode(CORNER);
-    image(this.overScreen, 0, 0);
+    image(overScreen, 0, 0);
 
 }
 
@@ -232,12 +231,17 @@ int moveHotBalloon(float initialVelocity, float finalVelocity, float time) {
 
 }
 
-int boundByCeilingAndFloor(int objectPosition, int objectHeight, int boundingHeight) {
+int boundByCeilingAndFloor(int objectY, int objectHeight, int boundingHeight) {
 
-    float objectRadius = objectHeight / 2.0;
-    position = round(min(objectPosition - objectRadius, 0.0) + objectRadius)
-    position = round(max(objectPosition + objectRadius, boundingHeight) - objectRadius)
-    return position;
+    int boundedY;
+    int objectRadius = round(objectHeight / 2.0);
+    
+    // ceiling bound
+    boundedY = max(objectY - objectRadius, 0) + objectRadius;
+    // floor bound
+    boundedY = min(objectY + objectRadius, boundingHeight) - objectRadius;
+
+    return boundedY;
 
 }
 
@@ -298,7 +302,6 @@ void wallAdd(ArrayList<Wall> walls, int newWallPosition) {
         newWallLayer, 
         newWallPosition, 
         newWallParams[0], // width
-        this.gameHeight,  // height 
         newWallParams[1], // gap position
         newWallParams[2]  // gap height
     ));
@@ -320,11 +323,11 @@ int[] generateWallParameters() {
     // this position is the Y coordinate from where the gapStarts
     int gapPosition = round(random(0, this.gameHeight - gapHeight));
 
-    return { wallWidth, gapPosition, gapHeight };
+    return new int[] { wallWidth, gapPosition, gapHeight };
 
 }
 
-int meetTheWalls (ArrayList<int[]> walls, int hotBalloonX, int hotBalloonY, PGraphics hotBalloon) {
+int meetTheWalls (ArrayList<Wall> walls, int hotBalloonX, int hotBalloonY, PGraphics hotBalloon) {
 
     // return 0, 1 or 2
     // if 2, we hit a wall, if 1 we passed a wall, if 0 nothing happened
@@ -350,7 +353,7 @@ int meetTheWalls (ArrayList<int[]> walls, int hotBalloonX, int hotBalloonY, PGra
 
     // find out the rounding mode of center-aligned odd widths in Processing Java
     int hotBalloonCornerX = hotBalloonX - round(hotBalloon.width / 2.0);
-    int hotBalloonCenterY = hotBallonY - round(hotBalloon.height / 2.0);
+    int hotBalloonCenterY = hotBalloonY - round(hotBalloon.height / 2.0);
     int hotBalloonWidth = hotBalloon.width;
     int hotBalloonHeight = hotBalloon.height;
 

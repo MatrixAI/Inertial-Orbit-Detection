@@ -37,11 +37,11 @@ Client clientEstablish(String serverAddress, int serverPort) {
  */
 void clientShutdown(Client client) {
 
-    if (client.active()) {
+    if (client != null && client.active()) {
         client.clear();
         client.stop();
     }
-
+    
 }
 
 /**
@@ -94,7 +94,7 @@ ClientData clientRead(Client client, Pattern messageProtocol, String rpsAndDirRe
 
     Matcher lexer;
     String token;
-    String[] rpsAndDirMatches;
+    String[] rpsAndDirMatches = null;
     boolean acquired = false;
 
     // if the client connection was dropped, just return null

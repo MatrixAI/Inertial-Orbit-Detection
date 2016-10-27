@@ -26,13 +26,13 @@ final float hotBalloonWeight = 10;
 final float hotBalloonHoriVelocity = 1.0;
 // the random range of distance between walls
 final float wallMinIntervalFactor = 0.1;
-final float wallMaxintervalFactor = 0.5;
+final float wallMaxIntervalFactor = 0.5;
 // the random range of gap height for each wall
 final float wallMinGapFactor = 0.3;
 final float wallMaxGapFactor = 0.8;
 // wall width
-final int wallMinWidthFactor = 0.1;
-final int wallMaxWidthFactor = 0.2;
+final float wallMinWidthFactor = 0.1;
+final float wallMaxWidthFactor = 0.2;
 
 //////////////////////
 // Network Settings //
