@@ -212,6 +212,7 @@ def run(
 
             logging.info(
                 "%d - Rolling the Data Window with Interval at: %d - %d", 
+                trace_id, 
                 rolling_window_interval_start, 
                 rolling_window_interval_end
             )
