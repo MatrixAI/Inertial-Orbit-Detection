@@ -65,13 +65,9 @@ class RotationTCPHandler(socketserver.BaseRequestHandler):
     def __del__(self):
 
         self.broadcaster.remove_channel(self.channel)
-
+        
         s = super()
-        try:
-            s.__del__
-        except AttributeError:
-            pass
-        else:
+        if hasattr(s, "__del__"): 
             s.__del__(self)
 
     def handle(self):
