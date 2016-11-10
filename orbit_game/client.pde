@@ -142,8 +142,8 @@ ClientData clientRead(Client client, Pattern messageProtocol, String rpsAndDirRe
         if (rpsAndDirMatches != null) {
 
             return new ClientData(
-                float(rpsAndDirMatches[0]), 
-                int(rpsAndDirMatches[1])
+                float(rpsAndDirMatches[1]), 
+                int(rpsAndDirMatches[2])
             );
 
         } else {

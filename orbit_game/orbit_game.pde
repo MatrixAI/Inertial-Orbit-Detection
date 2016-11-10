@@ -159,8 +159,8 @@ void draw() {
 
     if (clientData != null) {
         if (clientData.rps != null && clientData.direction != null) {
-            this.rotationRps         = clientData.rps;
-            this.rotationDirection   = clientData.direction; 
+            this.rotationRps         = float(clientData.rps);
+            this.rotationDirection   = int(clientData.direction); 
         }
         this.pingPongReceiveTime = currentTime;
     }

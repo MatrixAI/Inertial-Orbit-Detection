@@ -285,3 +285,7 @@ Our period is 1.5 seconds.
 ---
 
 Move the below into the Service Discovery section of Matrix AI. One quick implementation would have to do with the game code. Passing serial port information, autobaud detection and TCP port and address assignment. I suspect registering the device so that its recognisable immediately involves installing a "driver", which in Linux should just be a udev file right?
+
+---
+
+The PING PONG protocol is not working. We don't really need it in this small situation. But it's really annoying. The nc isn't even receiving a PING message. The server loop should have sent a SPINGE as well.. but nothing within the 5 seconds, before the system terminates the connection...

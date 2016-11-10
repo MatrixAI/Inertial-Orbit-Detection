@@ -7,6 +7,7 @@ class FSM {
 
     FSM(State initialState) {
         currentState = initialState;
+        currentState.enterFunction();
     }
 
     void update() {

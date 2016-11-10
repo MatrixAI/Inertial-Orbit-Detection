@@ -36,11 +36,9 @@ class Wall {
  */
 void keyPressed() { 
 
-    State currentState = this.game.getCurrentState();
-
-    if (currentState == this.gameStart) {
+    if (this.game.isInState(this.gameStart)) {
         this.game.transitionTo(this.gamePlaying);
-    } else if (currentState == this.gameOver) {
+    } else if (this.game.isInState(this.gameOver)) {
         this.game.transitionTo(this.gameStart);
     }
 

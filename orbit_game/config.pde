@@ -41,4 +41,4 @@ final float wallMaxWidthFactor = 0.2;
 final int pingPongTimeout = 5;
 final int pingPongInterval = 2; 
 final Pattern messageProtocol = Pattern.compile("^(?:[^S]*)(?:S(.*?)E)?");
-final String rpsAndDirTokenRegex = "(-?[0-1]):((?:[0-9]*[.])?[0-9]+)";
+final String rpsAndDirTokenRegex = "((?:[0-9]*[.])?[0-9]+):(-?[0-1])";
