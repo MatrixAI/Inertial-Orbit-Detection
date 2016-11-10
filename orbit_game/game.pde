@@ -1,6 +1,8 @@
 import java.util.Iterator;
 
 float hotBalloonVertVelocity;
+float hotBalloonVertDistance;
+float hotBalloonHoriDistance;
 int hotBalloonX, hotBalloonY;
 int score;
 
@@ -44,6 +46,20 @@ void keyPressed() {
 
 }
 
+/**
+ * Mouse Event Handler.
+ * This is only applied at the start and over states.
+ */
+void mouseClicked() {
+
+    if (this.game.isInState(this.gameStart)) {
+        this.game.transitionTo(this.gamePlaying);
+    } else if (this.game.isInState(this.gameOver)) {
+        this.game.transitionTo(this.gameStart);
+    }
+
+}
+
 ////////////////////////////////
 // Game Start State Functions //
 ////////////////////////////////
@@ -76,14 +92,15 @@ void enterPlaying() {
     // reset the balloon to the center with no initial velocity
     this.hotBalloonX = this.gameCenterX;
     this.hotBalloonY = this.gameCenterY;
-    this.hotBalloonVertVelocity = 0;
+    this.hotBalloonVertVelocity = 0.0;
+    this.hotBalloonVertDistance = 0.0;
+    this.hotBalloonHoriDistance = 0.0;
     // reset the walls
     this.wallUnpassedIndex = 0;
     this.wallInterval = 0;
     this.walls.clear();
     // reset the score
     this.score = 0;
-
 
     // create the layer assets required by the game
     if (this.playBackground == null) {
@@ -116,31 +133,61 @@ void runPlaying() {
         timeIntervalFor1Frame 
     );
 
-    // decide whether the balloon is moving up or down
-    // need to reverse the distance because origin is top-left in processing
-    this.hotBalloonY = this.hotBalloonY - this.moveHotBalloon(
+    // distance travelled can be less than 1 pixel, this is why we accumulate the floating point numbers
+    float hotBalloonVertDistanceFinal = this.hotBalloonVertDistance + this.moveHotBalloon(
         this.hotBalloonVertVelocity, 
         hotBalloonVertVelocityFinal, 
         timeIntervalFor1Frame
     );
 
-    // the final velocity becomes the initial velocity for the next frame
-    this.hotBalloonVertVelocity = hotBalloonVertVelocityFinal;
+    // distance travelled can be a positive or negative number
+    // we need to round towards zero for both positive or negative
+    // then subtract any integral distance within the final distance
+    // the integral distance will be the distance used to animate the pixel translation
+    int hotBalloonVertDistancePixels = 0;
+    if (hotBalloonVertDistanceFinal > 0) {
 
-    // bound the balloon by the ceiling and the floor
-    this.hotBalloonY = this.boundByCeilingAndFloor(this.hotBalloonY, this.hotBalloon.height, this.gameHeight);
+        hotBalloonVertDistancePixels = floor(hotBalloonVertDistanceFinal);
+        if (hotBalloonVertDistancePixels > 0) {
+            hotBalloonVertDistanceFinal -= hotBalloonVertDistancePixels;
+        } 
 
-    // constant horizontal motion
-    // the horizontal movement is actually applied to the walls
-    // since the balloon stays in the center of the screen horizontally
-    int horiDistance = this.moveHotBalloon(
+    } else if (hotBalloonVertDistanceFinal < 0) {
+
+        hotBalloonVertDistancePixels = ceil(hotBalloonVertDistanceFinal);
+        if (hotBalloonVertDistancePixels < 0) {
+            hotBalloonVertDistanceFinal -= hotBalloonVertDistancePixels;
+        }
+
+    }
+
+    // decide whether the balloon is moving up or down
+    // need to reverse the distance because origin is top-left in processing
+    int hotBalloonYFinal = this.hotBalloonY - hotBalloonVertDistancePixels;
+
+    if (this.collidedWithCeilingOrFloor(hotBalloonYFinal, this.hotBalloon.height, this.gameHeight)) {
+        hotBalloonVertVelocityFinal = 0.0;
+        hotBalloonVertDistanceFinal = 0.0;
+        // bound the balloon position by the ceiling and the floor
+        hotBalloonYFinal = this.boundByCeilingAndFloor(hotBalloonYFinal, this.hotBalloon.height, this.gameHeight);
+    }
+
+    // constant positive horizontal motion
+    // the horizontal movement is applied to the walls
+    // the balloon stays in the center horizontally
+    float hotBalloonHoriDistanceFinal = this.hotBalloonHoriDistance + this.moveHotBalloon(
         this.hotBalloonHoriVelocity, 
         this.hotBalloonHoriVelocity, 
-        timeIntervalFor1Frame 
+        timeIntervalFor1Frame
     );
 
+    int hotBalloonHoriDistancePixels = floor(hotBalloonHoriDistanceFinal);
+    if (hotBalloonHoriDistancePixels > 0) {
+        hotBalloonHoriDistanceFinal -= hotBalloonHoriDistancePixels;
+    }
+
     // update the walls (add new ones and delete out of screen ones)
-    this.wallsUpdate(this.walls, horiDistance);
+    this.wallsUpdate(this.walls, hotBalloonHoriDistancePixels);
 
     // repaint each wall
     for (Wall wall : this.walls) {
@@ -165,6 +212,13 @@ void runPlaying() {
         // increment score when we passed a wall
         this.score++;
     }
+
+    // the final vertical and horizontal distance, velocity and position becomes 
+    // the initial vertical and horizontal distance, velocity and position for the next frame
+    this.hotBalloonVertVelocity = hotBalloonVertVelocityFinal;
+    this.hotBalloonVertDistance = hotBalloonVertDistanceFinal;
+    this.hotBalloonHoriDistance = hotBalloonHoriDistanceFinal;
+    this.hotBalloonY = hotBalloonYFinal;
 
 }
 
@@ -221,11 +275,28 @@ float accelerateHotBalloonVert(
 
 }
 
-int moveHotBalloon(float initialVelocity, float finalVelocity, float time) {
+float moveHotBalloon(float initialVelocity, float finalVelocity, float time) {
 
     // d = ((vi + vf) / 2) * t
-    int distance = round((initialVelocity + finalVelocity / 2.0) * time);
-    return distance;
+    return (initialVelocity + finalVelocity / 2.0) * time;
+
+}
+
+boolean collidedWithCeilingOrFloor(int objectY, int objectHeight, int boundingHeight) {
+
+    int objectRadius = round(objectHeight / 2.0);
+
+    // collided with ceiling
+    if (objectY - objectRadius <= 0) {
+        return true;
+    }
+
+    // collided with floor
+    if (objectY + objectRadius >= boundingHeight) {
+        return true;
+    }
+
+    return false;
 
 }
 

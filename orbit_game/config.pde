@@ -15,6 +15,9 @@ final int defaultGameHeight = 500;
 // Game Settings //
 ///////////////////
 
+// connection
+final String defaultServerAddress = "127.0.0.1";
+final int    defaultServerPort = 55555;
 // assume pixels are meters
 // factor conversion of RPS to force in newtons
 final float rotationRPSToForceFactor = 4.0;

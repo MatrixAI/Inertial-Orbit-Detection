@@ -4,8 +4,6 @@ String serverAddress;
 int    serverPort;
 
 Client client;
-int    pingPongReceiveTime;
-int    pingPongSendTime;
 
 int gameWidth;
 int gameHeight;
@@ -32,8 +30,10 @@ int   rotationDirection;
  */
 void settings() {
 
-    this.gameWidth = defaultGameWidth;
-    this.gameHeight = defaultGameHeight;
+    this.serverAddress = this.defaultServerAddress;
+    this.serverPort = this.defaultServerPort;
+    this.gameWidth = this.defaultGameWidth;
+    this.gameHeight = this.defaultGameHeight;
     boolean displayFullScreen = false;
 
     // args may be null
@@ -111,11 +111,6 @@ void setup() {
         return;
     }
 
-    // initialise both ping pong send and receive time to the current time
-    int currentTime = this.getCurrentTime();
-    this.pingPongSendTime = currentTime;
-    this.pingPongReceiveTime = currentTime;
-
     this.game = new FSM(this.gameStart);
 
 }
@@ -124,56 +119,25 @@ void setup() {
  * Event loop
  */
 void draw() {
-
-    int currentTime = this.getCurrentTime();
-
-    boolean pongStatus = this.clientPongCheck(
-        this.client, 
-        this.pingPongTimeout, 
-        this.pingPongReceiveTime, 
-        currentTime
-    );
-
-    if (!pongStatus) {
-        println("Game Client Lost Connection, Restarting Connection");
-        this.clientShutdown(client);
+    
+    // we need to try restarting the connection once if the connection drops for some reason
+    if (!this.client.active()) {
+        println("Game Client Lost Connection, Attempting to Restablish Connection");
         this.client = this.clientEstablish(this.serverAddress, this.serverPort);
         if (this.client == null) {
             println("Game Client Couldn't Reconnect");
             exit();
+            return;
         }
-    }
-
-    boolean pingStatus = this.clientPingCheck(
-        this.client, 
-        this.pingPongInterval,
-        this.pingPongSendTime,
-        currentTime
-    );
-
-    if (pingStatus) {
-        this.pingPongSendTime = currentTime;
     }
 
     ClientData clientData = this.clientRead(this.client, this.messageProtocol, this.rpsAndDirTokenRegex);
 
     if (clientData != null) {
-        if (clientData.rps != null && clientData.direction != null) {
-            this.rotationRps         = float(clientData.rps);
-            this.rotationDirection   = int(clientData.direction); 
-        }
-        this.pingPongReceiveTime = currentTime;
+        this.rotationRps         = clientData.rps;
+        this.rotationDirection   = clientData.direction;
     }
 
     this.game.update();
-
-}
-
-/**
- * Get the current time since this program started in seconds.
- */
-int getCurrentTime() {
-
-    return millis() / 1000;
 
 }
