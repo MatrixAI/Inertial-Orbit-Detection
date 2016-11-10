@@ -6,7 +6,7 @@ import signal as unix_signal
 import server_loop
 import analysis_loop
 import multiprocessing
-import collections
+import broadcaster
 import graphing
 import logging
 
@@ -138,7 +138,7 @@ def main():
     controller = None
     server = None
     # queue size of 1
-    analysis_server_chan = collections.deque(maxlen=1)
+    analysis_server_broadcaster = broadcaster.Broadcaster(1)
 
     # if we need to graph, we'll setup the graph
     if command_line_args.graph:
@@ -164,7 +164,7 @@ def main():
     try: 
 
         logging.info("Establishing TCP server at %s:%d", command_line_args.host, command_line_args.port)
-        server = server_loop.start(command_line_args.host, command_line_args.port, analysis_server_chan)
+        server = server_loop.start(command_line_args.host, command_line_args.port, analysis_server_broadcaster)
 
         logging.info("Establishing connection to controller: %s", command_line_args.device)
         controller = analysis_loop.connect(command_line_args.device, command_line_args.baud)
@@ -178,7 +178,7 @@ def main():
             sensor_type=command_line_args.sensor_type, 
             orientation=orientation, 
             process_pool=process_pool, 
-            channel=analysis_server_chan, 
+            broadcaster=analysis_server_broadcaster, 
             graph=graph
         )
 

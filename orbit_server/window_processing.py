@@ -47,7 +47,7 @@ def analyse_rotation_process(time_delta_ms, orientation, sensor_type, data_windo
 
     return (norm_data_window, frequencies, wave_properties, rotation_direction, time_delta_s, trace_id)
 
-def analyse_rotation_process_callback(channel, graph, processed_package):
+def analyse_rotation_process_callback(broadcaster, graph, processed_package):
 
     (norm_data_window, frequencies, wave_properties, rotation_direction, time_delta_s, trace_id) = processed_package
 
@@ -64,9 +64,9 @@ def analyse_rotation_process_callback(channel, graph, processed_package):
     print("%d - RPS Up: %d" % (trace_id, frequencies["up"]))
     print("%d - RPS Average: %d" % (trace_id, rps))
 
-    # non-blocking push into the channel
+    # non-blocking push into the broadcaster
     # it will overwrite any old data if they haven't been collected
-    channel.append((rps, rotation_direction, trace_id))
+    broadcaster.broadcast((rps, rotation_direction, trace_id))
 
     if graph:
         graphing.display(graph, norm_data_window, frequencies, wave_properties, time_delta_s)

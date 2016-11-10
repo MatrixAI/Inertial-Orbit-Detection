@@ -125,7 +125,7 @@ def run(
     sensor_type, 
     orientation, 
     process_pool, 
-    channel, 
+    broadcaster, 
     graph 
 ):
     
@@ -158,7 +158,7 @@ def run(
     )
     analyse_rotation_process_callback = functools.partial(
         window_processing.analyse_rotation_process_callback, 
-        channel, 
+        broadcaster, 
         graph
     )
 
