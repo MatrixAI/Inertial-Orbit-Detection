@@ -61,10 +61,6 @@ PGraphics createPlayBackground(int width, int height) {
  */
 PGraphics createHotBalloon(int size) {
 
-    int layerSize = 2 * size;
-    int layerCenterX = round(layerSize / 2.0);
-    int layerCenterY = round(layerSize / 2.0);
-
     int balloonSize = size;
     int balloonMarker1Width = round(0.8 * balloonSize);
     int balloonMarker1Height = balloonSize;
@@ -89,7 +85,13 @@ PGraphics createHotBalloon(int size) {
     int basketMarker2Width = round(0.24 * balloonSize);
     int basketMarker2Height = basketSize;
     
-    PGraphics hotBalloon = createGraphics(layerSize, layerSize);
+    int layerWidth = balloonSize;
+    int layerHeight = round(2 * balloonSize);
+
+    int layerCenterX = round(layerWidth / 2.0);
+    int layerCenterY = round(layerHeight / 2.0);
+
+    PGraphics hotBalloon = createGraphics(layerWidth, layerHeight);
     
     hotBalloon.beginDraw();
     
@@ -158,37 +160,44 @@ PGraphics createHotBalloon(int size) {
 
 /**
  * Draw a single wall. The width and height is the width and height of the entire wall including the gaps.
- * The gap position is the Y-position from the top to the beginningof the gap.
+ * The gap position is the Y-position from the top to the beginning of the gap.
  * The gap height is the size of the gap opening.
  */
 PGraphics createWall(int width, int height, int gapPosition, int gapHeight) {
 
-    PGraphics wall = createGraphics(width, height);
+    int strokeWidth = round(0.004 * this.gameWidth);
+    strokeWidth = max(1, strokeWidth);
+
+    PGraphics wall = createGraphics(width + 2 * strokeWidth, height);
 
     wall.beginDraw();
     wall.rectMode(CORNER);
-    wall.strokeCap(ROUND);
-    wall.fill(color(240, 248, 255));
+
+    wall.stroke(95, 95, 95, 80);
+    wall.strokeWeight(strokeWidth);
+    wall.fill(color(236, 236, 236));
 
     // top-half of the wall
     // includes bottom corner radius
+    // we don't want to show the top stroke
     wall.rect(
         0, 
-        0, 
+        0 - strokeWidth, 
         width, 
         gapPosition, 
         0, 0, 
-        50, 50
+        0.2 * width, 0.2 * width
     ); 
 
     // bottom-half of the wall
     // includes top corner radius
+    // we don't want to show the bottom stroke
     wall.rect(
         0, 
-        gapPosition + gapHeight, 
+        gapPosition + gapHeight + strokeWidth, 
         width, 
-        height, 
-        50, 50, 
+        height - (gapPosition + gapHeight), 
+        0.2 * width, 0.2 * width, 
         0, 0
     );
 
@@ -215,14 +224,14 @@ PGraphics createOverScreen(int width, int height, int score) {
 
     screen.textSize(12);
     screen.textAlign(CENTER);
-    screen.text("Your Score:", centerX, centerY);
+    screen.text("Your Score:", centerX, centerY - 30);
     
-    screen.textSize(130);
+    screen.textSize(50);
     screen.textAlign(CENTER);
-    screen.text(score, centerX, centerY + 120);
+    screen.text(score, centerX, centerY + 20);
     
     screen.textSize(15);
-    screen.text("Press any key to restart", centerX, centerY + 140);
+    screen.text("Press any key to restart", centerX, centerY + 50);
 
     screen.endDraw();
     

@@ -1,9 +1,11 @@
 import java.util.Iterator;
 
+int hotBalloonX, hotBalloonY;
+int hotBalloonSize;
 float hotBalloonVertVelocity;
+float hotBalloonHoriVelocity;
 float hotBalloonVertDistance;
 float hotBalloonHoriDistance;
-int hotBalloonX, hotBalloonY;
 int score;
 
 PGraphics startScreen;
@@ -92,9 +94,11 @@ void enterPlaying() {
     // reset the balloon to the center with no initial velocity
     this.hotBalloonX = this.gameCenterX;
     this.hotBalloonY = this.gameCenterY;
+    this.hotBalloonSize = round(this.hotBalloonSizeFactor * this.gameWidth);
     this.hotBalloonVertVelocity = 0.0;
     this.hotBalloonVertDistance = 0.0;
     this.hotBalloonHoriDistance = 0.0;
+    this.hotBalloonHoriVelocity = this.hotBalloonHoriVelocityFactor * this.gameWidth;
     // reset the walls
     this.wallUnpassedIndex = 0;
     this.wallInterval = 0;
@@ -207,6 +211,7 @@ void runPlaying() {
         this.hotBalloon 
     );
     if (wallStatus == 2) {
+        delay(500);
         this.game.transitionTo(this.gameOver);
     } else if (wallStatus == 1) {
         // increment score when we passed a wall
@@ -323,6 +328,12 @@ void wallsUpdate(ArrayList<Wall> walls, int distanceMoved) {
     if (walls.isEmpty()) {
 
         this.wallAdd(walls, this.gameWidth);
+
+        // generate a new random wall interval for the next wall
+        this.wallInterval = round(random(
+            this.wallMinIntervalFactor * this.gameWidth,
+            this.wallMaxIntervalFactor * this.gameWidth
+        ));
     
     } else {
         
@@ -346,11 +357,12 @@ void wallsUpdate(ArrayList<Wall> walls, int distanceMoved) {
         // add a new wall if the wall interval is satisfied by the shift of distanceMoved
         Wall lastWall = walls.get(walls.size() - 1);
         int lastWallRightSide = lastWall.position + lastWall.width;
-        if (lastWallRightSide > this.wallInterval) {
+
+        if ((this.gameWidth - lastWallRightSide) > this.wallInterval) {
 
             this.wallAdd(walls, lastWallRightSide + this.wallInterval);
             
-            // generate a new wall interval
+            // generate a new random wall interval for the next wall
             this.wallInterval = round(random(
                 this.wallMinIntervalFactor * this.gameWidth,
                 this.wallMaxIntervalFactor * this.gameWidth
@@ -405,6 +417,7 @@ int meetTheWalls (ArrayList<Wall> walls, int hotBalloonX, int hotBalloonY, PGrap
         return 0;
     }
 
+    // get the first wall that we haven't passed yet
     Wall wall = walls.get(this.wallUnpassedIndex);
 
     // there are 3 objects we care about when detecting collision here
@@ -422,25 +435,26 @@ int meetTheWalls (ArrayList<Wall> walls, int hotBalloonX, int hotBalloonY, PGrap
 
     // find out the rounding mode of center-aligned odd widths in Processing Java
     int hotBalloonCornerX = hotBalloonX - round(hotBalloon.width / 2.0);
-    int hotBalloonCenterY = hotBalloonY - round(hotBalloon.height / 2.0);
-    int hotBalloonWidth = hotBalloon.width;
+    int hotBalloonCornerY = hotBalloonY - round(hotBalloon.height / 2.0);
+
+    int hotBalloonWidth  = hotBalloon.width;
     int hotBalloonHeight = hotBalloon.height;
 
-    int wallTopHalfX = wall.position;
-    int wallTopHalfY = 0;
-    int wallTopHalfWidth = wall.width;
-    int wallTopHalfHeight = wall.gapPosition;
+    int wallTopHalfCornerX = wall.position;
+    int wallTopHalfCornerY = 0;
+    int wallTopHalfWidth   = wall.width;
+    int wallTopHalfHeight  = wall.gapPosition;
 
-    int wallBottomHalfX = wall.position;
-    int wallBottomHalfY = wall.gapPosition + wall.gapHeight;
-    int wallBottomHalfWidth = wall.width;
-    int wallBottomHalfHeight = wall.layer.height - wallBottomHalfY;
+    int wallBottomHalfCornerX = wall.position;
+    int wallBottomHalfCornerY = wall.gapPosition + wall.gapHeight;
+    int wallBottomHalfWidth   = wall.width;
+    int wallBottomHalfHeight  = wall.layer.height - wallBottomHalfCornerY;
 
     if (
-        hotBalloonCornerX < wallTopHalfX + wallTopHalfWidth &&  // the first left side has to be less than the second right side
-        hotBalloonCornerX + hotBalloonWidth > wallTopHalfX &&   // the first right side has to be greater than the second left side
-        hotBalloonCenterY > wallTopHalfY + wallTopHalfHeight && // the first top side has to be greater than the second bottom side
-        hotBalloonCenterY + hotBalloonHeight < wallTopHalfY     // the first bottom side has to be less than the second top side
+        hotBalloonCornerX < wallTopHalfCornerX + wallTopHalfWidth &&  // the balloon's left side has to be less than the wall's right side
+        hotBalloonCornerX + hotBalloonWidth > wallTopHalfCornerX &&   // the balloon's right side has to be greater than the wall's left side
+        hotBalloonCornerY < wallTopHalfCornerY + wallTopHalfHeight && // the balloon's top side has to be less than the wall's bottom side
+        hotBalloonCornerY + hotBalloonHeight > wallTopHalfCornerY     // the balloon's bottom side has to be greater than the wall's top side
     ) {
     
         // collidied with top half
@@ -450,10 +464,10 @@ int meetTheWalls (ArrayList<Wall> walls, int hotBalloonX, int hotBalloonY, PGrap
     }
 
     if (
-        hotBalloonCornerX < wallBottomHalfX + wallBottomHalfWidth &&  // the first left side has to be less than the second right side
-        hotBalloonCornerX + hotBalloonWidth > wallBottomHalfX &&      // the first right side has to be greater than the second left side
-        hotBalloonCenterY > wallBottomHalfY + wallBottomHalfHeight && // the first top side has to be greater than the second bottom side
-        hotBalloonCenterY + hotBalloonHeight < wallBottomHalfY        // the first bottom side has to be less than the second top side
+        hotBalloonCornerX < wallBottomHalfCornerX + wallBottomHalfWidth &&  // the balloon's left side has to be less than the wall's right side
+        hotBalloonCornerX + hotBalloonWidth > wallBottomHalfCornerX &&      // the balloon's right side has to be greater than the wall's left side
+        hotBalloonCornerY < wallBottomHalfCornerY + wallBottomHalfHeight && // the balloon's top side has to be less than the wall's bottom side
+        hotBalloonCornerY + hotBalloonHeight > wallBottomHalfCornerY        // the balloon's bottom side has to be greater than the wall's top side
     ) {
     
         // collided with bottom half
