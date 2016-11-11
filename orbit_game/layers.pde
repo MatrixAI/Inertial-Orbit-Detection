@@ -62,6 +62,7 @@ PGraphics createPlayBackground(int width, int height) {
 PGraphics createHotBalloon(int size) {
 
     int balloonSize = size;
+    int balloonYOffset = round(balloonSize / 2.0);
     int balloonMarker1Width = round(0.8 * balloonSize);
     int balloonMarker1Height = balloonSize;
     int balloonMarker2Width = round(0.6 * balloonSize);
@@ -86,7 +87,7 @@ PGraphics createHotBalloon(int size) {
     int basketMarker2Height = basketSize;
     
     int layerWidth = balloonSize;
-    int layerHeight = round(2 * balloonSize);
+    int layerHeight = round(1.45 * balloonSize);
 
     int layerCenterX = round(layerWidth / 2.0);
     int layerCenterY = round(layerHeight / 2.0);
@@ -99,12 +100,12 @@ PGraphics createHotBalloon(int size) {
     hotBalloon.strokeWeight(1);
     hotBalloon.stroke(94, 38, 18);
     hotBalloon.line(
-        layerCenterX + rope1StartXOffset, layerCenterY + rope1StartYOffset, 
-        layerCenterX + rope1EndXOffset,   layerCenterY + rope1EndYOffset
+        layerCenterX + rope1StartXOffset, balloonYOffset + rope1StartYOffset, 
+        layerCenterX + rope1EndXOffset,   balloonYOffset + rope1EndYOffset
     );
     hotBalloon.line(
-        layerCenterX + rope2StartXOffset, layerCenterY + rope2StartYOffset, 
-        layerCenterX + rope2EndXOffset,   layerCenterY + rope2EndYOffset
+        layerCenterX + rope2StartXOffset, balloonYOffset + rope2StartYOffset, 
+        layerCenterX + rope2EndXOffset,   balloonYOffset + rope2EndYOffset
     );
 
     // balloon
@@ -112,21 +113,21 @@ PGraphics createHotBalloon(int size) {
     hotBalloon.noStroke();
     hotBalloon.ellipseMode(CENTER);
     hotBalloon.ellipse(
-        layerCenterX, layerCenterY, 
+        layerCenterX, balloonYOffset, 
         balloonSize, balloonSize
     );
     
     hotBalloon.fill(255, 255, 255);
     hotBalloon.ellipseMode(CENTER);
     hotBalloon.ellipse(
-        layerCenterX, layerCenterY, 
+        layerCenterX, balloonYOffset, 
         balloonMarker1Width, balloonMarker1Height
     );
     
     hotBalloon.fill(255, 48, 48);
     hotBalloon.ellipseMode(CENTER);
     hotBalloon.ellipse(
-        layerCenterX, layerCenterY, 
+        layerCenterX, balloonYOffset, 
         balloonMarker2Width, balloonMarker2Height
     );
 
@@ -134,21 +135,21 @@ PGraphics createHotBalloon(int size) {
     hotBalloon.fill(139, 125, 107);
     hotBalloon.rectMode(CENTER);
     hotBalloon.rect(
-        layerCenterX + basketXOffset, layerCenterY + basketYOffset, 
+        layerCenterX + basketXOffset, balloonYOffset + basketYOffset, 
         basketSize, basketSize
     );
     
     hotBalloon.fill(139, 69, 19);
     hotBalloon.rectMode(CENTER);
     hotBalloon.rect(
-        layerCenterX + basketXOffset, layerCenterY + basketYOffset, 
+        layerCenterX + basketXOffset, balloonYOffset + basketYOffset, 
         basketMarker1Width, basketMarker1Height
     );
     
     hotBalloon.fill(139, 125, 107);
     hotBalloon.rectMode(CENTER);
     hotBalloon.rect(
-        layerCenterX + basketXOffset, layerCenterY + basketYOffset, 
+        layerCenterX + basketXOffset, balloonYOffset + basketYOffset, 
         basketMarker2Width, basketMarker2Height
     );
 
@@ -165,8 +166,7 @@ PGraphics createHotBalloon(int size) {
  */
 PGraphics createWall(int width, int height, int gapPosition, int gapHeight) {
 
-    int strokeWidth = round(0.004 * this.gameWidth);
-    strokeWidth = max(1, strokeWidth);
+    int strokeWidth = 1;
 
     PGraphics wall = createGraphics(width + 2 * strokeWidth, height);
 

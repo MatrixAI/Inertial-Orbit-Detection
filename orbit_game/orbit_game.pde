@@ -121,7 +121,7 @@ void setup() {
 void draw() {
     
     // we need to try restarting the connection once if the connection drops for some reason
-    if (!this.client.active()) {
+    if (this.client == null || !this.client.active()) {
         println("Game Client Lost Connection, Attempting to Restablish Connection");
         this.client = this.clientEstablish(this.serverAddress, this.serverPort);
         if (this.client == null) {
@@ -139,5 +139,8 @@ void draw() {
     }
 
     this.game.update();
+
+    this.rotationRps = 0.0;
+    this.rotationDirection = 0;
 
 }

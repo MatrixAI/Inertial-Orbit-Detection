@@ -1,3 +1,4 @@
+import processing.event.KeyEvent;
 import java.util.Iterator;
 
 int hotBalloonX, hotBalloonY;
@@ -38,12 +39,23 @@ class Wall {
  * Key Event Handler.
  * This is only applied at the start and over states.
  */
-void keyPressed() { 
+void keyPressed(KeyEvent event) { 
 
     if (this.game.isInState(this.gameStart)) {
         this.game.transitionTo(this.gamePlaying);
     } else if (this.game.isInState(this.gameOver)) {
         this.game.transitionTo(this.gameStart);
+    } else if (this.game.isInState(this.gamePlaying)) {
+
+        int key = event.getKeyCode();
+        if (key == UP) {
+            this.rotationRps = 1;
+            this.rotationDirection = 1; 
+        } else if (key == DOWN) {
+            this.rotationRps = 1;
+            this.rotationDirection = -1; 
+        }
+
     }
 
 }
@@ -99,6 +111,9 @@ void enterPlaying() {
     this.hotBalloonVertDistance = 0.0;
     this.hotBalloonHoriDistance = 0.0;
     this.hotBalloonHoriVelocity = this.hotBalloonHoriVelocityFactor * this.gameWidth;
+    // reset the rps and direction
+    this.rotationRps = 0.0;
+    this.rotationDirection = 0;
     // reset the walls
     this.wallUnpassedIndex = 0;
     this.wallInterval = 0;

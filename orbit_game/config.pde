@@ -7,9 +7,9 @@ import java.util.regex.Pattern;
 // pixel radius factor of the balloon applied onto game width
 final float hotBalloonSizeFactor = 0.052;
 // default screen width
-final int defaultGameWidth = 500;
+final int defaultGameWidth = 1000;
 // default screen height
-final int defaultGameHeight = 500;
+final int defaultGameHeight = 1000;
 
 ///////////////////
 // Game Settings //
@@ -20,13 +20,13 @@ final int    defaultServerPort = 55555;
 
 // assume pixels are meters
 // factor conversion of RPS to force in newtons
-final float rotationRPSToForceFactor = 4.0;
+final float rotationRPSToForceFactor = 9000.0;
 // gravity in pixels/second^2
-final float gravity = -9.8;
+final float gravity = -30;
 // weight in kg
-final float hotBalloonWeight = 10;
+final float hotBalloonWeight = 6;
 // velocity factor applied onto game screen width to calculate pixels/second
-final float hotBalloonHoriVelocityFactor = 0.16;
+final float hotBalloonHoriVelocityFactor = 0.12;
 // the random range of distance between walls
 final float wallMinIntervalFactor = 0.1;
 final float wallMaxIntervalFactor = 0.5;
