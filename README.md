@@ -289,3 +289,14 @@ Move the below into the Service Discovery section of Matrix AI. One quick implem
 ---
 
 The PING PONG protocol is not working. We don't really need it in this small situation. But it's really annoying. The nc isn't even receiving a PING message. The server loop should have sent a SPINGE as well.. but nothing within the 5 seconds, before the system terminates the connection...
+
+---
+
+Still to do:
+
+0. Service discovery between the game client and server (OS-specific)
+1. Autobuilding the processing application via command line
+2. Custom IDing of the USB controller
+3. Udev script to autostart game upon plugging the controller
+4. Packaging up the game to be deployable
+5. Detailing controller manufacturing
