@@ -182,7 +182,7 @@ The combination of the rotational tangent direction and the displacement positio
 0. Service discovery between the game client and server (OS-specific)
 1. Autobuilding the processing application via command line
 2. Custom IDing of the USB controller
-3. Udev script to autostart game upon plugging the controller
+3. Udev script to autostart game upon plugging the controller (using mdns for service discovery, and python-avahi for the game code)
 4. Packaging up the game to be deployable
 5. Detailing controller manufacturing
 6. In the future, the server should be resilient to device plugins and unplugs. Detect both of these and continue running. When unplugging, it should signal game to reset (or close the game), and then restart from the beginning. It should also deal with when the device stops answering, and attempt to reset the game controller until it works, or after a few retries, indicate that the device is broken, and signal the game to exit, and close itself. The server itself should be starting the game, so the game should be a child process of the parent process.
